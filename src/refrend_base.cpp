@@ -370,6 +370,8 @@ struct refrend : Renderer
     virtual bool RenderPVR() {
         numRenders++;
 
+        palette_update();
+
         u32 base = REGION_BASE;
 
         RegionArrayEntry entry;
