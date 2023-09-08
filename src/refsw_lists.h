@@ -5,8 +5,8 @@
 #include "license/bsd"
 
 #include <functional>
-#include "refrend_regs.h"
 #include "core_structs.h" // for ISP_TSP and co
+#include "refsw_lists_regs.h"
 
 struct RegionArrayEntry {
     RegionArrayEntryControl control;

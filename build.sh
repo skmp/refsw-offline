@@ -4,9 +4,9 @@ echo "Check deps.sh for packages needed for build"
 echo "Compiling...."
 g++ \
         src/main.cpp \
-        src/refrend_base.cpp \
+        src/refsw_lists.cpp \
+        src/refsw_tile.cpp \
         src/refsw_pixel.cpp \
-        src/refsw.cpp \
         src/pvr_regs.cpp \
         src/pvr_mem.cpp \
         src/TexCache.cpp \

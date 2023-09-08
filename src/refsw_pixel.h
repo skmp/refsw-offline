@@ -4,6 +4,6 @@
 */
 #include "license/bsd"
 
-#include "refsw.h"
+#include "refsw_tile.h"
 
 PixelPipeline* Create_RefPixelPipeline();

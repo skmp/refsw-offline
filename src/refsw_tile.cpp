@@ -13,7 +13,7 @@
 #include <float.h>
 
 #include "build.h"
-#include "refsw.h"
+#include "refsw_tile.h"
 #include "refsw_pixel.h"
 
 #include <mmintrin.h>

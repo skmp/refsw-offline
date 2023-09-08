@@ -11,7 +11,7 @@
 
 #include "TexCache.h"
 
-#include "refrend_base.h"
+#include "refsw_lists.h"
 
 // For texture cache
 

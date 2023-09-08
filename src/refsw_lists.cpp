@@ -87,7 +87,7 @@ extern u32 decoded_colors[3][65536];
 static BITMAPINFOHEADER bi = { sizeof(BITMAPINFOHEADER), 0, 0, 1, 32, BI_RGB };
 #endif
 
-#include "refrend_base.h"
+#include "refsw_lists.h"
 
 
 /*
