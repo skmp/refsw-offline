@@ -49,11 +49,6 @@ struct PvrTexInfo
 {
 	const char* name;
 	int bpp;        //4/8 for pal. 16 for yuv, rgb, argb
-	GLuint type;
-	// Conversion to 16 bpp
-	TexConvFP *PL;
-	TexConvFP *TW;
-	TexConvFP *VQ;
 	// Conversion to 32 bpp
 	TexConvFP32 *PL32;
 	TexConvFP32 *TW32;
@@ -61,14 +56,14 @@ struct PvrTexInfo
 };
 
 PvrTexInfo format[8]=
-{	// name     bpp GL format				           Planar		           Twiddled                VQ                      Planar(32b)                 Twiddled(32b)                VQ (32b)
-	{"1555",    16, (GLuint)GL_UNSIGNED_SHORT_5_5_5_1, (TexConvFP*)tex1555_PL, (TexConvFP*)tex1555_TW, (TexConvFP*)tex1555_VQ, (TexConvFP32*)tex1555_PL32, (TexConvFP32*)tex1555_TW32, (TexConvFP32*)tex1555_VQ32},  //1555
-	{"565",     16, (GLuint)GL_UNSIGNED_SHORT_5_6_5,   (TexConvFP*)tex565_PL,  (TexConvFP*)tex565_TW,  (TexConvFP*)tex565_VQ,  (TexConvFP32*)tex565_PL32,  (TexConvFP32*)tex565_TW32,  (TexConvFP32*)tex565_VQ32},   //565
-	{"4444",    16, (GLuint)GL_UNSIGNED_SHORT_4_4_4_4, (TexConvFP*)tex4444_PL, (TexConvFP*)tex4444_TW, (TexConvFP*)tex4444_VQ, (TexConvFP32*)tex4444_PL32, (TexConvFP32*)tex4444_TW32, (TexConvFP32*)tex4444_VQ32},  //4444
-	{"yuv",     16, (GLuint)GL_UNSIGNED_BYTE,          (TexConvFP*)NULL,       (TexConvFP*)NULL,       (TexConvFP*)NULL,       (TexConvFP32*)texYUV422_PL, (TexConvFP32*)texYUV422_TW, (TexConvFP32*)texYUV422_VQ},  //yuv
-	{"bumpmap", 16, (GLuint)GL_UNSIGNED_SHORT_4_4_4_4, (TexConvFP*)texBMP_PL,  (TexConvFP*)texBMP_TW,  (TexConvFP*)texBMP_VQ,  (TexConvFP32*)NULL},                                                                  //bump map
-	{"pal4",    4,  (GLuint)0,                         (TexConvFP*)0,          (TexConvFP*)texPAL4_TW, (TexConvFP*)0,          (TexConvFP32*)NULL,         (TexConvFP32*)texPAL4_TW32, (TexConvFP32*)NULL},          //pal4
-	{"pal8",    8,  (GLuint)0,                         (TexConvFP*)0,          (TexConvFP*)texPAL8_TW, (TexConvFP*)0,          (TexConvFP32*)NULL,         (TexConvFP32*)texPAL8_TW32,  (TexConvFP32*)NULL},         //pal8
+{	// name     bpp Planar(32b)                 Twiddled(32b)                VQ (32b)
+	{"1555",    16, (TexConvFP32*)tex1555_PL32, (TexConvFP32*)tex1555_TW32, (TexConvFP32*)tex1555_VQ32},  //1555
+	{"565",     16, (TexConvFP32*)tex565_PL32,  (TexConvFP32*)tex565_TW32,  (TexConvFP32*)tex565_VQ32},   //565
+	{"4444",    16, (TexConvFP32*)tex4444_PL32, (TexConvFP32*)tex4444_TW32, (TexConvFP32*)tex4444_VQ32},  //4444
+	{"yuv",     16, (TexConvFP32*)texYUV422_PL32, (TexConvFP32*)texYUV422_TW32, (TexConvFP32*)texYUV422_VQ32},  //yuv
+	{"bumpmap", 16, (TexConvFP32*)NULL},                                                                  //bump map
+	{"pal4",    4,  (TexConvFP32*)NULL,         (TexConvFP32*)texPAL4_TW32, (TexConvFP32*)NULL},          //pal4
+	{"pal8",    8,  (TexConvFP32*)NULL,         (TexConvFP32*)texPAL8_TW32,  (TexConvFP32*)NULL},         //pal8
 	{"ns/1555", 0},                                                                                                                                                                                                  // Not supported (1555)
 };
 
@@ -83,10 +78,6 @@ const u32 MipPoint[8] =
 	0x05556,//512
 	0x15556//1024
 };
-
-const GLuint PAL_TYPE[4]=
-{GL_UNSIGNED_SHORT_5_5_5_1,GL_UNSIGNED_SHORT_5_6_5,GL_UNSIGNED_SHORT_4_4_4_4, GL_UNSIGNED_BYTE};
-
 
 //Texture Cache :)
 void TextureCacheData::PrintTextureName()
@@ -148,8 +139,9 @@ void TextureCacheData::Create()
 	case PixelBumpMap:	//4		Bump Map 	16 bits/pixel; S value: 8 bits; R value: 8 bits
 	case PixelPal4:		//5     4 BPP Palette   Palette texture with 4 bits/pixel
 	case PixelPal8:		//6     8 BPP Palette   Palette texture with 8 bits/pixel
-		if (tcw.ScanOrder && (tex->PL || tex->PL32))
+		if (tcw.ScanOrder)
 		{
+			verify(tex->PL32 != NULL);
 			//Texture is stored 'planar' in memory, no deswizzle is needed
 			//verify(tcw.VQ_Comp==0);
 			if (tcw.VQ_Comp != 0)
@@ -160,7 +152,6 @@ void TextureCacheData::Create()
 			if (tcw.StrideSel)
 				stride=(TEXT_CONTROL&31)*32;
 			//Call the format specific conversion code
-			texconv = tex->PL;
 			texconv32 = tex->PL32;
 			//calculate the size, in bytes, for the locking
 			size=stride*h*tex->bpp/8;
@@ -172,20 +163,18 @@ void TextureCacheData::Create()
 
 			if (tcw.VQ_Comp)
 			{
-				verify(tex->VQ != NULL || tex->VQ32 != NULL);
+				verify(tex->VQ32 != NULL);
 				indirect_color_ptr=sa;
 				if (tcw.MipMapped)
 					sa+=MipPoint[tsp.TexU];
-				texconv = tex->VQ;
 				texconv32 = tex->VQ32;
 				size=w*h/8;
 			}
 			else
 			{
-				verify(tex->TW != NULL || tex->TW32 != NULL);
+				verify(tex->TW32 != NULL);
 				if (tcw.MipMapped)
 					sa+=MipPoint[tsp.TexU]*tex->bpp/2;
-				texconv = tex->TW;
 				texconv32 = tex->TW32;
 				size=w*h*tex->bpp/8;
 			}
@@ -210,20 +199,13 @@ void TextureCacheData::CacheFromVram()
 {
 	//texture state tracking stuff
 
-	GLuint textype=tex->type;
-
-	if (IsPaletted())
-	{
-		textype=PAL_TYPE[PAL_RAM_CTRL&3];
-	}
-
 	palette_index=indirect_color_ptr; //might be used if pal. tex
 	vq_codebook=(u8*)&vram[indirect_color_ptr];  //might be used if VQ tex
 
 	//texture conversion work
 	u32 stride=w;
 
-	if (tcw.StrideSel && tcw.ScanOrder && (tex->PL || tex->PL32))
+	if (tcw.StrideSel && tcw.ScanOrder)
 		stride=(TEXT_CONTROL&31)*32; //I think this needs +1 ?
 
 	//PrintTextureName();
@@ -245,79 +227,34 @@ void TextureCacheData::CacheFromVram()
 	}
 
 	void *temp_tex_buffer = NULL;
-	u32 upscaled_w = w;
-	u32 upscaled_h = h;
 
-	PixelBuffer<u16> pb16;
 	PixelBuffer<u32> pb32;
 
-	// Figure out if we really need to use a 32-bit pixel buffer
-	if (texconv32 != NULL)
-	{
-		// Force the texture type since that's the only 32-bit one we know
-		textype = GL_UNSIGNED_BYTE;
+	verify(texconv32 != NULL);
 
-		pb32.init(w, h);
+	pb32.init(w, h);
 
-		texconv32(&pb32, (u8*)&vram[sa], stride, h);
+	texconv32(&pb32, (u8*)&vram[sa], stride, h);
 
-		temp_tex_buffer = pb32.data();
-	}
-	else if (texconv != NULL)
-	{
-		pb16.init(w, h);
-
-		texconv(&pb16,(u8*)&vram[sa],stride,h);
-		temp_tex_buffer = pb16.data();
-	}
-	else
-	{
-		//fill it in with a temp color
-		printf("UNHANDLED TEXTURE\n");
-		pb16.init(w, h);
-		memset(pb16.data(), 0x80, w * h * 2);
-		temp_tex_buffer = pb16.data();
-	}
+	temp_tex_buffer = pb32.data();
+	
 	// Restore the original texture height if it was constrained to VRAM limits above
 	h = original_h;
 
 	//lock the texture to detect changes in it
 
-	if (textype == GL_UNSIGNED_BYTE) {
-		u32 *tex_data = (u32 *)temp_tex_buffer;
+	u32 *tex_data = (u32 *)temp_tex_buffer;
 
-		for (int y = 0; y < h; y++)
+	for (int y = 0; y < h; y++)
+	{
+		for (int x = 0; x < w; x++)
 		{
-			for (int x = 0; x < w; x++)
-			{
-				u32 *data = (u32 *)&pData[(x + y * w) * 8];
+			u32 *data = (u32 *)&pData[(x + y * w) * 8];
 
-				data[0] = tex_data[(x + 1) % w + (y + 1) % h * w];
-				data[1] = tex_data[(x + 0) % w + (y + 1) % h * w];
-				data[2] = tex_data[(x + 1) % w + (y + 0) % h * w];
-				data[3] = tex_data[(x + 0) % w + (y + 0) % h * w];
-			}
-		}
-	} else {
-	
-		if (textype == GL_UNSIGNED_SHORT_5_6_5)
-			tex_type = 0;
-		else if (textype == GL_UNSIGNED_SHORT_5_5_5_1)
-			tex_type = 1;
-		else if (textype == GL_UNSIGNED_SHORT_4_4_4_4)
-			tex_type = 2;
-
-		u16 *tex_data = (u16 *)temp_tex_buffer;
-
-		for (int y = 0; y < h; y++) {
-			for (int x = 0; x < w; x++) {
-				u32* data = (u32*)&pData[(x + y*w) * 8];
-
-				data[0] = decoded_colors[tex_type][tex_data[(x + 1) % w + (y + 1) % h * w]];
-				data[1] = decoded_colors[tex_type][tex_data[(x + 0) % w + (y + 1) % h * w]];
-				data[2] = decoded_colors[tex_type][tex_data[(x + 1) % w + (y + 0) % h * w]];
-				data[3] = decoded_colors[tex_type][tex_data[(x + 0) % w + (y + 0) % h * w]];
-			}
+			data[0] = tex_data[(x + 1) % w + (y + 1) % h * w];
+			data[1] = tex_data[(x + 0) % w + (y + 1) % h * w];
+			data[2] = tex_data[(x + 1) % w + (y + 0) % h * w];
+			data[3] = tex_data[(x + 0) % w + (y + 0) % h * w];
 		}
 	}
 

@@ -75,7 +75,6 @@ void palette_update()
 	case 0:
 		for (int i=0;i<1024;i++)
 		{
-			palette16_ram[i] = ARGB1555(PALETTE_RAM[i]);
 			palette32_ram[i] = ARGB1555_32(PALETTE_RAM[i]);
 		}
 		break;
@@ -83,7 +82,6 @@ void palette_update()
 	case 1:
 		for (int i=0;i<1024;i++)
 		{
-			palette16_ram[i] = ARGB565(PALETTE_RAM[i]);
 			palette32_ram[i] = ARGB565_32(PALETTE_RAM[i]);
 		}
 		break;
@@ -91,7 +89,6 @@ void palette_update()
 	case 2:
 		for (int i=0;i<1024;i++)
 		{
-			palette16_ram[i] = ARGB4444(PALETTE_RAM[i]);
 			palette32_ram[i] = ARGB4444_32(PALETTE_RAM[i]);
 		}
 		break;
@@ -99,7 +96,6 @@ void palette_update()
 	case 3:
 		for (int i=0;i<1024;i++)
 		{
-			palette16_ram[i] = ARGB8888(PALETTE_RAM[i]);
 			palette32_ram[i] = ARGB8888_32(PALETTE_RAM[i]);
 		}
 		break;
