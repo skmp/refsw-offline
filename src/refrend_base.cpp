@@ -97,26 +97,16 @@ struct refrend : Renderer
 {
     std::function<RefRendInterface*()> createBackend;
 
-    unique_ptr<RefRendInterface> backend;
+    RefRendInterface* backend;
 
     u8* vram;
 
     int numRenders = 0;
 
     refrend(u8* vram, function<RefRendInterface*()> createBackend) : vram(vram), createBackend(createBackend) {
-        backend.reset(createBackend());
+        backend = createBackend();
 
         backend->Init();
-    }
-
-    //queue a tile to the correct thread, or render it immediately if threading is disabled 
-    void EnqueueTile(int tileId, function<void(RefRendInterface*)> fn) {
-        fn(backend.get());
-    }
-
-    //queue a tile writeout the main thread, or do it immediatelly if threading is disabled
-    void EnqueueWriteout(function<void()> fn) {
-        fn();
     }
 
     void RenderTriangle(RefRendInterface* backend, RenderMode render_mode, DrawParameters* params, parameter_tag_t tag, int vertex_offset, const Vertex& v1, const Vertex& v2, const Vertex& v3, const Vertex* v4, taRECT* area)
@@ -384,136 +374,131 @@ struct refrend : Renderer
 
         RegionArrayEntry entry;
 
-        EnqueueTile(0, [=](RefRendInterface* backend){
-            backend->DebugOnFrameStart(numRenders);
-        });
-
+        backend->DebugOnFrameStart(numRenders);
+        
         // Parse region array
         do {
             base += ReadRegionArrayEntry(base, &entry);
-            EnqueueTile(entry.control.tiley * 64 + entry.control.tilex, [=](RefRendInterface* backend) {
-                taRECT rect;
-                rect.top = entry.control.tiley * 32;
-                rect.left = entry.control.tilex * 32;
+            
+            taRECT rect;
+            rect.top = entry.control.tiley * 32;
+            rect.left = entry.control.tilex * 32;
 
-                rect.bottom = rect.top + 32;
-                rect.right = rect.left + 32;
+            rect.bottom = rect.top + 32;
+            rect.right = rect.left + 32;
 
-                parameter_tag_t bgTag;
+            parameter_tag_t bgTag;
 
-                backend->DebugOnTileStart(rect.left, rect.top);
+            backend->DebugOnTileStart(rect.left, rect.top);
 
-                // register BGPOLY to fpu
+            // register BGPOLY to fpu
+            {
+                DrawParameters params;
+                Vertex vtx[8];
+                decode_pvr_vetrices(&params, PARAM_BASE + ISP_BACKGND_T.tag_address * 4, ISP_BACKGND_T.skip, ISP_BACKGND_T.shadow, vtx, 8);
+                bgTag = backend->AddFpuEntry(&params, &vtx[ISP_BACKGND_T.tag_offset], RM_OPAQUE, ISP_BACKGND_T);
+            }
+
+            // Tile needs clear?
+            if (!entry.control.z_keep)
+            {
+                // Clear Param + Z + stencil buffers
+                backend->ClearBuffers(bgTag, ISP_BACKGND_D.f, 0);
+            }
+
+            // Render OPAQ to TAGS
+            if (!entry.opaque.empty)
+            {
+                RenderObjectList(backend, RM_OPAQUE, entry.opaque.ptr_in_words * 4, &rect);
+            }
+
+            // render PT to TAGS
+            if (!entry.puncht.empty)
+            {
+                RenderObjectList(backend, RM_PUNCHTHROUGH, entry.puncht.ptr_in_words * 4, &rect);
+            }
+
+            //TODO: Render OPAQ modvols
+            if (!entry.opaque_mod.empty)
+            {
+                RenderObjectList(backend, RM_MODIFIER, entry.opaque_mod.ptr_in_words * 4, &rect);
+            }
+
+            // Render TAGS to ACCUM
+            backend->RenderParamTags(RM_OPAQUE, rect.left, rect.top);
+
+            // layer peeling rendering
+            if (!entry.trans.empty)
+            {
+                // clear the param buffer
+                backend->ClearParamBuffer(TAG_INVALID);
+
+                do
                 {
-                    DrawParameters params;
-                    Vertex vtx[8];
-                    decode_pvr_vetrices(&params, PARAM_BASE + ISP_BACKGND_T.tag_address * 4, ISP_BACKGND_T.skip, ISP_BACKGND_T.shadow, vtx, 8);
-                    bgTag = backend->AddFpuEntry(&params, &vtx[ISP_BACKGND_T.tag_offset], RM_OPAQUE, ISP_BACKGND_T);
-                }
+                    // prepare for a new pass
+                    backend->ClearPixelsDrawn();
 
-                // Tile needs clear?
-                if (!entry.control.z_keep)
-                {
-                    // Clear Param + Z + stencil buffers
-                    backend->ClearBuffers(bgTag, ISP_BACKGND_D.f, 0);
-                }
+                    // copy depth test to depth reference buffer, clear depth test buffer, clear stencil
+                    backend->PeelBuffers(FLT_MAX, 0);
 
-                // Render OPAQ to TAGS
-                if (!entry.opaque.empty)
-                {
-                    RenderObjectList(backend, RM_OPAQUE, entry.opaque.ptr_in_words * 4, &rect);
-                }
+                    // render to TAGS
+                    RenderObjectList(backend, RM_TRANSLUCENT, entry.trans.ptr_in_words * 4, &rect);
 
-                // render PT to TAGS
-                if (!entry.puncht.empty)
-                {
-                    RenderObjectList(backend, RM_PUNCHTHROUGH, entry.puncht.ptr_in_words * 4, &rect);
-                }
-
-                //TODO: Render OPAQ modvols
-                if (!entry.opaque_mod.empty)
-                {
-                    RenderObjectList(backend, RM_MODIFIER, entry.opaque_mod.ptr_in_words * 4, &rect);
-                }
-
-                // Render TAGS to ACCUM
-                backend->RenderParamTags(RM_OPAQUE, rect.left, rect.top);
-
-                // layer peeling rendering
-                if (!entry.trans.empty)
-                {
-                    // clear the param buffer
-                    backend->ClearParamBuffer(TAG_INVALID);
-
-                    do
+                    if (!entry.trans_mod.empty)
                     {
-                        // prepare for a new pass
-                        backend->ClearPixelsDrawn();
+                        RenderObjectList(backend, RM_MODIFIER, entry.trans_mod.ptr_in_words * 4, &rect);
+                    }
 
-                        // copy depth test to depth reference buffer, clear depth test buffer, clear stencil
-                        backend->PeelBuffers(FLT_MAX, 0);
+                    // render TAGS to ACCUM
+                    // also marks TAGS as invalid, but keeps the index for coplanar sorting
+                    backend->RenderParamTags(RM_TRANSLUCENT, rect.left, rect.top);
+                } while (backend->GetPixelsDrawn() != 0);
+            }
 
-                        // render to TAGS
-                        RenderObjectList(backend, RM_TRANSLUCENT, entry.trans.ptr_in_words * 4, &rect);
+            // Copy to vram
+            if (!entry.control.no_writeout)
+            {
+                auto copy = new u8[32 * 32 * 4];
+                memcpy(copy, backend->GetColorOutputBuffer(), 32 * 32 * 4);
 
-                        if (!entry.trans_mod.empty)
-                        {
-                            RenderObjectList(backend, RM_MODIFIER, entry.trans_mod.ptr_in_words * 4, &rect);
-                        }
+                auto field = SCALER_CTL.fieldselect;
+                auto interlace = SCALER_CTL.interlace;
 
-                        // render TAGS to ACCUM
-                        // also marks TAGS as invalid, but keeps the index for coplanar sorting
-                        backend->RenderParamTags(RM_TRANSLUCENT, rect.left, rect.top);
-                    } while (backend->GetPixelsDrawn() != 0);
-                }
+                auto base = (interlace && field) ? FB_W_SOF2 : FB_W_SOF1;
 
-                // Copy to vram
-                if (!entry.control.no_writeout)
+                // very few configurations supported here
+                verify(SCALER_CTL.hscale == 0);
+                verify(SCALER_CTL.interlace == 0); // write both SOFs
+                auto vscale = SCALER_CTL.vscalefactor;
+                verify(vscale == 0x401 || vscale == 0x400 || vscale == 0x800);
+
+                auto fb_packmode = FB_W_CTRL.fb_packmode;
+                verify(fb_packmode == 0x1); // 565 RGB16
+
+                auto src = copy;
+                auto bpp = 2;
+                auto offset_bytes = entry.control.tilex * 32 * bpp + entry.control.tiley * 32 * FB_W_LINESTRIDE.stride * 8;
+
+                for (int y = 0; y < 32; y++)
                 {
-                    auto copy = new u8[32 * 32 * 4];
-                    memcpy(copy, backend->GetColorOutputBuffer(), 32 * 32 * 4);
+                    //auto base = (y&1) ? FB_W_SOF2 : FB_W_SOF1;
+                    auto dst = base + offset_bytes + (y)*FB_W_LINESTRIDE.stride * 8;
 
-                    EnqueueWriteout([=](){
-                        auto field = SCALER_CTL.fieldselect;
-                        auto interlace = SCALER_CTL.interlace;
+                    for (int x = 0; x < 32; x++)
+                    {
+                        auto pixel = (((src[0] >> 3) & 0x1F) << 0) | (((src[1] >> 2) & 0x3F) << 5) | (((src[2] >> 3) & 0x1F) << 11);
+                        pvr_write_area1_16(vram, dst, pixel);
 
-                        auto base = (interlace && field) ? FB_W_SOF2 : FB_W_SOF1;
-
-                        // very few configurations supported here
-                        verify(SCALER_CTL.hscale == 0);
-                        verify(SCALER_CTL.interlace == 0); // write both SOFs
-                        auto vscale = SCALER_CTL.vscalefactor;
-                        verify(vscale == 0x401 || vscale == 0x400 || vscale == 0x800);
-
-                        auto fb_packmode = FB_W_CTRL.fb_packmode;
-                        verify(fb_packmode == 0x1); // 565 RGB16
-
-                        auto src = copy;
-                        auto bpp = 2;
-                        auto offset_bytes = entry.control.tilex * 32 * bpp + entry.control.tiley * 32 * FB_W_LINESTRIDE.stride * 8;
-
-                        for (int y = 0; y < 32; y++)
-                        {
-                            //auto base = (y&1) ? FB_W_SOF2 : FB_W_SOF1;
-                            auto dst = base + offset_bytes + (y)*FB_W_LINESTRIDE.stride * 8;
-
-                            for (int x = 0; x < 32; x++)
-                            {
-                                auto pixel = (((src[0] >> 3) & 0x1F) << 0) | (((src[1] >> 2) & 0x3F) << 5) | (((src[2] >> 3) & 0x1F) << 11);
-                                pvr_write_area1_16(vram, dst, pixel);
-
-                                dst += bpp;
-                                src += 4; // skip alpha
-                            }
-                        }
-
-                        delete[] copy;
-                    });
+                        dst += bpp;
+                        src += 4; // skip alpha
+                    }
                 }
 
-                // clear the tsp cache
-                backend->ClearFpuEntries();
-            });
+                delete[] copy;
+            }
+
+            // clear the tsp cache
+            backend->ClearFpuEntries();
         } while (!entry.control.last_region);
 
         return false;
@@ -567,12 +552,10 @@ struct refrend : Renderer
     }
 
     ~refrend() {
-#if HOST_OS == OS_WINDOWS
-        if (hBMP) {
-            DeleteObject(SelectObject(hmem, holdBMP));
-            DeleteDC(hmem);
+        if (backend) {
+            delete backend;
+            backend = nullptr;
         }
-#endif
     }
 
     virtual void Present()
