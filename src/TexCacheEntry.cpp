@@ -212,12 +212,9 @@ void TextureCacheData::CacheFromVram()
 
 	GLuint textype=tex->type;
 
-	bool has_alpha = false;
 	if (IsPaletted())
 	{
 		textype=PAL_TYPE[PAL_RAM_CTRL&3];
-		if (textype == GL_UNSIGNED_BYTE)
-			has_alpha = true;
 	}
 
 	palette_index=indirect_color_ptr; //might be used if pal. tex
@@ -255,17 +252,7 @@ void TextureCacheData::CacheFromVram()
 	PixelBuffer<u32> pb32;
 
 	// Figure out if we really need to use a 32-bit pixel buffer
-	bool need_32bit_buffer = true;
-	if ((settings.rend.TextureUpscale <= 1
-			|| w * h > settings.rend.MaxFilteredTextureSize
-				* settings.rend.MaxFilteredTextureSize		// Don't process textures that are too big
-			|| tcw.PixelFmt == PixelYUV)					// Don't process YUV textures
-		&& (!IsPaletted() || textype != GL_UNSIGNED_BYTE)
-		&& texconv != NULL)
-		need_32bit_buffer = false;
-	// TODO avoid upscaling/depost. textures that change too often
-
-	if (texconv32 != NULL && need_32bit_buffer)
+	if (texconv32 != NULL)
 	{
 		// Force the texture type since that's the only 32-bit one we know
 		textype = GL_UNSIGNED_BYTE;
@@ -296,23 +283,41 @@ void TextureCacheData::CacheFromVram()
 
 	//lock the texture to detect changes in it
 
-	if (textype == GL_UNSIGNED_SHORT_5_6_5)
-		tex_type = 0;
-	else if (textype == GL_UNSIGNED_SHORT_5_5_5_1)
-		tex_type = 1;
-	else if (textype == GL_UNSIGNED_SHORT_4_4_4_4)
-		tex_type = 2;
+	if (textype == GL_UNSIGNED_BYTE) {
+		u32 *tex_data = (u32 *)temp_tex_buffer;
 
-	u16 *tex_data = (u16 *)temp_tex_buffer;
+		for (int y = 0; y < h; y++)
+		{
+			for (int x = 0; x < w; x++)
+			{
+				u32 *data = (u32 *)&pData[(x + y * w) * 8];
 
-	for (int y = 0; y < h; y++) {
-		for (int x = 0; x < w; x++) {
-			u32* data = (u32*)&pData[(x + y*w) * 8];
+				data[0] = tex_data[(x + 1) % w + (y + 1) % h * w];
+				data[1] = tex_data[(x + 0) % w + (y + 1) % h * w];
+				data[2] = tex_data[(x + 1) % w + (y + 0) % h * w];
+				data[3] = tex_data[(x + 0) % w + (y + 0) % h * w];
+			}
+		}
+	} else {
+	
+		if (textype == GL_UNSIGNED_SHORT_5_6_5)
+			tex_type = 0;
+		else if (textype == GL_UNSIGNED_SHORT_5_5_5_1)
+			tex_type = 1;
+		else if (textype == GL_UNSIGNED_SHORT_4_4_4_4)
+			tex_type = 2;
 
-			data[0] = decoded_colors[tex_type][tex_data[(x + 1) % w + (y + 1) % h * w]];
-			data[1] = decoded_colors[tex_type][tex_data[(x + 0) % w + (y + 1) % h * w]];
-			data[2] = decoded_colors[tex_type][tex_data[(x + 1) % w + (y + 0) % h * w]];
-			data[3] = decoded_colors[tex_type][tex_data[(x + 0) % w + (y + 0) % h * w]];
+		u16 *tex_data = (u16 *)temp_tex_buffer;
+
+		for (int y = 0; y < h; y++) {
+			for (int x = 0; x < w; x++) {
+				u32* data = (u32*)&pData[(x + y*w) * 8];
+
+				data[0] = decoded_colors[tex_type][tex_data[(x + 1) % w + (y + 1) % h * w]];
+				data[1] = decoded_colors[tex_type][tex_data[(x + 0) % w + (y + 1) % h * w]];
+				data[2] = decoded_colors[tex_type][tex_data[(x + 1) % w + (y + 0) % h * w]];
+				data[3] = decoded_colors[tex_type][tex_data[(x + 0) % w + (y + 0) % h * w]];
+			}
 		}
 	}
 

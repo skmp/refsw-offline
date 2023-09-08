@@ -65,31 +65,31 @@ public:
 		buffer.p_buffer_start = buffer.p_current_line = buffer.p_current_pixel = NULL;
 	}
 
-	__forceinline pixel_type *data(u32 x = 0, u32 y = 0)
+	pixel_type *data(u32 x = 0, u32 y = 0)
 	{
 		return p_buffer_start + pixels_per_line * y + x;
 	}
 
-	__forceinline void prel(u32 x,pixel_type value)
+	void prel(u32 x,pixel_type value)
 	{
 		p_current_pixel[x]=value;
 	}
 
-	__forceinline void prel(u32 x,u32 y,pixel_type value)
+	void prel(u32 x,u32 y,pixel_type value)
 	{
 		p_current_pixel[y*pixels_per_line+x]=value;
 	}
 
-	__forceinline void rmovex(u32 value)
+	void rmovex(u32 value)
 	{
 		p_current_pixel+=value;
 	}
-	__forceinline void rmovey(u32 value)
+	void rmovey(u32 value)
 	{
 		p_current_line+=pixels_per_line*value;
 		p_current_pixel=p_current_line;
 	}
-	__forceinline void amove(u32 x_m,u32 y_m)
+	void amove(u32 x_m,u32 y_m)
 	{
 		//p_current_pixel=p_buffer_start;
 		p_current_line=p_buffer_start+pixels_per_line*y_m;
@@ -100,7 +100,7 @@ public:
 void palette_update();
 
 template<class pixel_type>
-__forceinline pixel_type cclamp(pixel_type minv, pixel_type maxv, pixel_type x) {
+pixel_type cclamp(pixel_type minv, pixel_type maxv, pixel_type x) {
 	return std::min(maxv, std::max(minv, x));
 }
 
@@ -116,16 +116,16 @@ __forceinline pixel_type cclamp(pixel_type minv, pixel_type maxv, pixel_type x) 
 
 // Unpack to 32-bit word
 
-#define ARGB1555_32( word )    ( ((word & 0x8000) ? 0xFF000000 : 0) | (((word>>10) & 0x1F)<<3)  | (((word>>5) & 0x1F)<<11)  | (((word>>0) & 0x1F)<<19) )
+#define ARGB1555_32( word )    ( ((word & 0x8000) ? 0xFF000000 : 0) | (((word>>0) & 0x1F)<<3)  | (((word>>5) & 0x1F)<<11)  | (((word>>10) & 0x1F)<<19) )
 
-#define ARGB565_32( word )     ( (((word>>11)&0x1F)<<3) | (((word>>5)&0x3F)<<10) | (((word>>0)&0x1F)<<19) | 0xFF000000 )
+#define ARGB565_32( word )     ( (((word>>0)&0x1F)<<3) | (((word>>5)&0x3F)<<10) | (((word>>11)&0x1F)<<19) | 0xFF000000 )
 
-#define ARGB4444_32( word ) ( (((word>>12)&0xF)<<28) | (((word>>8)&0xF)<<4) | (((word>>4)&0xF)<<12) | (((word>>0)&0xF)<<20) )
+#define ARGB4444_32( word ) ( (((word>>12)&0xF)<<28) | (((word>>0)&0xF)<<4) | (((word>>4)&0xF)<<12) | (((word>>8)&0xF)<<20) )
 
-#define ARGB8888_32( word ) ( ((word >> 0) & 0xFF000000) | (((word >> 16) & 0xFF) << 0) | (((word >> 8) & 0xFF) << 8) | ((word & 0xFF) << 16) )
+#define ARGB8888_32( word ) ( ((word >> 0) & 0xFF000000) | (((word >> 0) & 0xFF) << 0) | (((word >> 8) & 0xFF) << 8) | (((word >> 16) & 0xFF) << 16) )
 
 template<class PixelPacker>
-__forceinline u32 YUV422(s32 Y,s32 Yu,s32 Yv)
+u32 YUV422(s32 Y,s32 Yu,s32 Yv)
 {
 	Yu-=128;
 	Yv-=128;
@@ -146,7 +146,7 @@ __forceinline u32 YUV422(s32 Y,s32 Yu,s32 Yv)
 //pixel packers !
 struct pp_565
 {
-	__forceinline static u32 packRGB(u8 R,u8 G,u8 B)
+	static u32 packRGB(u8 R,u8 G,u8 B)
 	{
 		R>>=3;
 		G>>=2;
@@ -157,7 +157,7 @@ struct pp_565
 
 struct pp_8888
 {
-	__forceinline static u32 packRGB(u8 R,u8 G,u8 B)
+	static u32 packRGB(u8 R,u8 G,u8 B)
 	{
 		return (R << 0) | (G << 8) | (B << 16) | 0xFF000000;
 	}
@@ -169,7 +169,7 @@ struct pp_8888
 		{ \
 			static const u32 xpp=x;\
 			static const u32 ypp=y;	\
-			__forceinline static void Convert(PixelBuffer<type>* pb,u8* data) \
+			static void Convert(PixelBuffer<type>* pb,u8* data) \
 		{
 
 #define pixelcvt_start(name,x,y) pixelcvt_start_base(name, x, y, u16)
@@ -180,7 +180,7 @@ struct name \
 { \
 	static const u32 xpp=x;\
 	static const u32 ypp=y;	\
-	__forceinline static void Convert(PixelBuffer<pixel_size>* pb,u8* data) \
+	static void Convert(PixelBuffer<pixel_size>* pb,u8* data) \
 {
 
 #define pixelcvt_end } }

@@ -49,12 +49,12 @@ struct PlaneStepper3
         c = (v1_a - ddx * v1.x - ddy * v1.y);
     }
 
-    __forceinline float Ip(float x, float y) const
+    float Ip(float x, float y) const
     {
         return x * ddx + y * ddy + c;
     }
 
-    __forceinline float Ip(float x, float y, float W) const
+    float Ip(float x, float y, float W) const
     {
         return Ip(x, y) * W;
     }

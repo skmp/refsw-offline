@@ -12,13 +12,13 @@
 
 //read
 
-u16 DYNACALL pvr_read_area1_16(void* ctx, u32 addr)
+u16 pvr_read_area1_16(void* ctx, u32 addr)
 {
 	auto vram = reinterpret_cast<u8*>(ctx);
 
 	return *(u16*)&vram[pvr_map32(addr)];
 }
-u32 DYNACALL pvr_read_area1_32(void* ctx, u32 addr)
+u32 pvr_read_area1_32(void* ctx, u32 addr)
 {
 	auto vram = reinterpret_cast<u8*>(ctx);
 
@@ -27,12 +27,12 @@ u32 DYNACALL pvr_read_area1_32(void* ctx, u32 addr)
 
 //write
 
-void DYNACALL pvr_write_area1_16(void* ctx, u32 addr,u16 data)
+void pvr_write_area1_16(void* ctx, u32 addr,u16 data)
 {
 	auto vram = reinterpret_cast<u8*>(ctx);
 	*(u16*)&vram[pvr_map32(addr)]=data;
 }
-void DYNACALL pvr_write_area1_32(void* ctx, u32 addr,u32 data)
+void pvr_write_area1_32(void* ctx, u32 addr,u32 data)
 {
 	auto vram = reinterpret_cast<u8*>(ctx);
 	*(u32*)&vram[pvr_map32(addr)] = data;

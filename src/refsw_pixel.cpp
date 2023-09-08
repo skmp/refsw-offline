@@ -218,7 +218,7 @@ struct RefPixelPipeline : PixelPipeline {
 
     // Interpolate the base color, also cheap shadows modifier
     template<bool pp_UseAlpha, bool pp_CheapShadows>
-    INLINE static Color InterpolateBase(const PlaneStepper3* Col, float x, float y, float W, u32 stencil) {
+    static Color InterpolateBase(const PlaneStepper3* Col, float x, float y, float W, u32 stencil) {
         Color rv;
         u32 mult = 256;
 
@@ -243,7 +243,7 @@ struct RefPixelPipeline : PixelPipeline {
 
     // Interpolate the offset color, also cheap shadows modifier
     template<bool pp_CheapShadows>
-    INLINE static Color InterpolateOffs(const PlaneStepper3* Ofs, float x, float y, float W, u32 stencil) {
+    static Color InterpolateOffs(const PlaneStepper3* Ofs, float x, float y, float W, u32 stencil) {
         Color rv;
         u32 mult = 256;
 
@@ -263,7 +263,7 @@ struct RefPixelPipeline : PixelPipeline {
 
     // select/calculate blend coefficient for the blend unit
     template<u32 pp_AlphaInst, bool srcOther>
-    INLINE static Color BlendCoefs(Color src, Color dst) {
+    static Color BlendCoefs(Color src, Color dst) {
         Color rv;
 
         switch(pp_AlphaInst>>1) {
@@ -312,7 +312,7 @@ struct RefPixelPipeline : PixelPipeline {
         }
     }
 
-    INLINE static u8 LookupFogTable(float invW) {
+    static u8 LookupFogTable(float invW) {
         u8* fog_density=(u8*)&FOG_DENSITY;
         float fog_den_mant=fog_density[1]/128.0f;  //bit 7 -> x. bit, so [6:0] -> fraction -> /128
         s32 fog_den_exp=(s8)fog_density[0];
@@ -349,7 +349,7 @@ struct RefPixelPipeline : PixelPipeline {
 
     // Color Clamp and Fog a pixel
     template<bool pp_Offset, bool pp_ColorClamp, u32 pp_FogCtrl>
-    INLINE static Color FogUnit(Color col, float invW, u8 offs_a) {
+    static Color FogUnit(Color col, float invW, u8 offs_a) {
 
         if (pp_ColorClamp) {
             Color clamp_max = { FOG_CLAMP_MAX };

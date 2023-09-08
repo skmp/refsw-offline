@@ -74,31 +74,8 @@ int main(int argc, char **argv)
     return 0;
 }
 
-int msgboxf(const wchar* text, unsigned int type, ...) {
-    va_list args;
-
-    wchar temp[2048];
-    va_start(args, type);
-    vsnprintf(temp, sizeof(temp), text, args);
-    va_end(args);
-    printf("%s\n", temp);
-
-    return MBX_OK;
-}
-
 void os_DebugBreak()
 {
 	printf("DEBUGBREAK!\n");
     exit(-1);
 }
-
-bool RegisterRendererBackend(const rendererbackend_t& backend)
-{
-    printf("Backend: %s (%s) registered\n", backend.slug.c_str(), backend.desc.c_str());
-    return true;
-}
-
-
-vram_block* libCore_vramlock_Lock(u32 start_offset64,u32 end_offset64,void* userdata) { return 0; }
-void libCore_vramlock_Unlock_block(vram_block* block) { }
-void libCore_vramlock_Unlock_block_wb(vram_block* block) { }

@@ -25,7 +25,7 @@
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-function"
 #endif
-static __forceinline int iround(float x)
+static int iround(float x)
 {
     return _mm_cvtt_ss2si(_mm_load_ss(&x));
 }
@@ -49,7 +49,7 @@ static float mmax(float a, float b, float c, float d)
 
 struct refsw_impl : refsw
 {
-    DECL_ALIGN(32) u32 render_buffer[MAX_RENDER_PIXELS * 6]; //param pointers + depth1 + depth2 + stencil + acum 1 + acum 2
+    __attribute__((aligned(32))) u32 render_buffer[MAX_RENDER_PIXELS * 6]; //param pointers + depth1 + depth2 + stencil + acum 1 + acum 2
     unique_ptr<PixelPipeline> pixelPipeline;
 
     u8* vram;

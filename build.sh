@@ -7,7 +7,7 @@ g++ \
         src/refrend_base.cpp \
         src/refsw_pixel.cpp \
         src/refsw.cpp \
-        src/pvr_sb_regs.cpp \
+        src/pvr_regs.cpp \
         src/pvr_mem.cpp \
         src/TexCache.cpp \
         src/TexCacheEntry.cpp \
