@@ -10,8 +10,7 @@
 #include "pvr_mem.h"
 #include "core_structs.h"
 
-// Needed for TexConvFP and others
-#include "gles.h"
+#include "TexConv.h"
 
 /*
 Textures
@@ -44,6 +43,57 @@ Compression
 #endif
 
 extern u32 decoded_colors[3][65536];
+
+
+struct PvrTexInfo;
+template <class pixel_type> class PixelBuffer;
+typedef void TexConvFP(PixelBuffer<u16>* pb,u8* p_in,u32 Width,u32 Height);
+typedef void TexConvFP32(PixelBuffer<u32>* pb,u8* p_in,u32 Width,u32 Height);
+
+struct TextureCacheData
+{
+	TSP tsp;        //dreamcast texture parameters
+	TCW tcw;
+	u8* vram;
+	
+	u16* pData;
+	int tex_type;
+	
+	u32 Lookups;
+	
+	//decoded texture info
+	u32 sa;         //pixel data start address in vram (might be offset for mipmaps/etc)
+	u32 sa_tex;		//texture data start address in vram
+	u32 w,h;        //width & height of the texture
+	u32 size;       //size, in bytes, in vram
+	
+	PvrTexInfo* tex;
+	TexConvFP*  texconv;
+	TexConvFP32*  texconv32;
+	
+	//used for palette updates
+	u32 palette_hash;			// Palette hash at time of last update
+	u32  indirect_color_ptr;    //palette color table index for pal. tex
+	//VQ quantizers table for VQ tex
+	//a texture can't be both VQ and PAL at the same time
+	u32 texture_hash;			// xxhash of texture data, used for custom textures
+	u32 old_texture_hash;		// legacy hash
+	
+	
+	void PrintTextureName();
+	
+	bool IsPaletted()
+	{
+		return tcw.PixelFmt == PixelPal4 || tcw.PixelFmt == PixelPal8;
+	}
+	
+	void Create();
+
+	void CacheFromVram();
+
+	//true if : dirty or paletted texture and hashes don't match
+	bool Delete();
+};
 
 struct PvrTexInfo
 {

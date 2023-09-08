@@ -9,11 +9,11 @@
 #include "core_structs.h"
 #include "Renderer_if.h"
 
+#include "TexCache.h"
+
 #include "refrend_base.h"
 
 // For texture cache
-#include "gles.h"
-
 
 #define MAX_RENDER_WIDTH 32
 #define MAX_RENDER_HEIGHT 32

@@ -66,6 +66,7 @@
 #include "pvr_mem.h"
 #include "oslib.h"
 #include "TexCache.h"
+#include "TexConv.h"  // for pixel buffer, used for presenting
 
 #include <png.h>
 
@@ -73,7 +74,6 @@
 #include <float.h>
 
 // needed for texcache
-#include "gles.h"
 
 u32 decoded_colors[3][65536];
 
