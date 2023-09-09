@@ -14,6 +14,7 @@ extern u32 palette_index;
 extern u32 palette32_ram[1024];
 
 extern u32 detwiddle[2][8][1024];
+extern u32 decoded_colors[3][65536];
 
 template<class pixel_type>
 class PixelBuffer

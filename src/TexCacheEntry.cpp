@@ -42,7 +42,7 @@ Compression
 	#include <xmmintrin.h>
 #endif
 
-extern u32 decoded_colors[3][65536];
+u32 decoded_colors[3][65536];
 
 
 struct PvrTexInfo;

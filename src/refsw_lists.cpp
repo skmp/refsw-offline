@@ -73,15 +73,9 @@
 #include <cmath>
 #include <float.h>
 
-// needed for texcache
-
-u32 decoded_colors[3][65536];
-
 #include <memory>
 
 #include "pvr_regs.h"
-
-extern u32 decoded_colors[3][65536];
 
 #if HOST_OS == OS_WINDOWS
 static BITMAPINFOHEADER bi = { sizeof(BITMAPINFOHEADER), 0, 0, 1, 32, BI_RGB };
@@ -514,41 +508,6 @@ struct refrend : Renderer
 
 
     virtual bool Init() {
-
-
-#if HOST_OS == OS_WINDOWS
-        hWnd = (HWND)libPvr_GetRenderTarget();
-
-        bi.biWidth = 640;
-        bi.biHeight = 480;
-
-        RECT rect;
-
-        GetClientRect(hWnd, &rect);
-
-        HDC hdc = GetDC(hWnd);
-
-        FillRect(hdc, &rect, (HBRUSH)(COLOR_BACKGROUND));
-
-        bi.biSizeImage = bi.biWidth * bi.biHeight * 4;
-
-        hBMP = CreateCompatibleBitmap(hdc, bi.biWidth, bi.biHeight);
-        hmem = CreateCompatibleDC(hdc);
-        holdBMP = (HBITMAP)SelectObject(hmem, hBMP);
-        ReleaseDC(hWnd, hdc);
-#endif
-#define REP_16(x) ((x)* 16 + (x))
-#define REP_32(x) ((x)* 8 + (x)/4)
-#define REP_64(x) ((x)* 4 + (x)/16)
-
-        for (int c = 0; c < 65536; c++) {
-            //565
-            decoded_colors[0][c] = 0xFF000000 | (REP_32((c >> 11) % 32) << 16) | (REP_64((c >> 5) % 64) << 8) | (REP_32((c >> 0) % 32) << 0);
-            //1555
-            decoded_colors[1][c] = ((c >> 0) % 2 * 255 << 24) | (REP_32((c >> 11) % 32) << 16) | (REP_32((c >> 6) % 32) << 8) | (REP_32((c >> 1) % 32) << 0);
-            //4444
-            decoded_colors[2][c] = (REP_16((c >> 0) % 16) << 24) | (REP_16((c >> 12) % 16) << 16) | (REP_16((c >> 8) % 16) << 8) | (REP_16((c >> 4) % 16) << 0);
-        }
 
         return true;
     }

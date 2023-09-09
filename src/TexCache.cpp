@@ -53,7 +53,7 @@ u32 twiddle_slow(u32 x,u32 y,u32 x_sz,u32 y_sz)
 	return rv;
 }
 
-void BuildTwiddleTables()
+static void BuildTables()
 {
 	for (u32 s=0;s<8;s++)
 	{
@@ -65,9 +65,22 @@ void BuildTwiddleTables()
 			detwiddle[1][s][i]=twiddle_slow(0,i,y_sz,x_sz);
 		}
 	}
+
+#define REP_16(x) ((x)* 16 + (x))
+#define REP_32(x) ((x)* 8 + (x)/4)
+#define REP_64(x) ((x)* 4 + (x)/16)
+
+	for (int c = 0; c < 65536; c++) {
+		//565
+		decoded_colors[0][c] = 0xFF000000 | (REP_32((c >> 11) % 32) << 16) | (REP_64((c >> 5) % 64) << 8) | (REP_32((c >> 0) % 32) << 0);
+		//1555
+		decoded_colors[1][c] = ((c >> 0) % 2 * 255 << 24) | (REP_32((c >> 11) % 32) << 16) | (REP_32((c >> 6) % 32) << 8) | (REP_32((c >> 1) % 32) << 0);
+		//4444
+		decoded_colors[2][c] = (REP_16((c >> 0) % 16) << 24) | (REP_16((c >> 12) % 16) << 16) | (REP_16((c >> 8) % 16) << 8) | (REP_16((c >> 4) % 16) << 0);
+	}
 }
 
-static OnLoad btt(&BuildTwiddleTables);
+static OnLoad btt(&BuildTables);
 
 void palette_update()
 {
