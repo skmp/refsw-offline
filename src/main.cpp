@@ -24,37 +24,33 @@ u8 vram[VRAM_SIZE];
 
 int main(int argc, char **argv)
 {
-    if (argc != 2)
+    if (argc != 3)
     {
-        printf("expected %s <pvr_dump_folder>\n", argv[0]);
+        printf("expected %s <pvr_dump_folder> <dump name>\n", argv[0]);
         return -1;
     }
 
     path base_path(argv[1]);
+    string dump_pvr_regs(argv[2]);
+    string dump_vram(argv[2]);
 
-    printf("loading dump from '%s'... likely to not work for 16mb vram ...\n", base_path.c_str());
+    auto path_pvr_regs = base_path / ("pvr_regs" + dump_pvr_regs + ".bin");
+    auto path_vram = base_path / ("vram" + dump_vram + ".bin");
+
+    printf("loading vram from '%s'... likely to not work for 16mb vram ...\n", path_vram.c_str());
     {
-        FILE* v0 = fopen((base_path / "vram0.bin").c_str(), "rb");
-        for (size_t i = 0; i < VRAM_SIZE/2; i+= 4)
+        FILE* v0 = fopen(path_pvr_regs.c_str()).c_str(), "rb");
+        for (size_t i = 0; i < VRAM_SIZE; i+= 4)
         {
             auto v = vrp(vram, i);
             fread(v, sizeof(*v), 1, v0);
         }
         fclose(v0);
     }
-
-    {
-        FILE* v1 = fopen((base_path / "vram1.bin").c_str(), "rb");
-        for (size_t i = VRAM_SIZE/2; i < VRAM_SIZE; i+= 4)
-        {
-            auto v = vrp(vram, i);
-            fread(v, sizeof(*v), 1, v1);
-        }
-        fclose(v1);
-    }
     
+    printf("loading pvr regs from '%s'... likely to not work for 16mb vram ...\n", path_vram.c_str());
     {
-        FILE* regs = fopen((base_path / "pvr_regs").c_str(), "rb");
+        FILE* regs = fopen(path_pvr_regs.c_str()), "rb");
         fread(pvr_regs, sizeof(pvr_regs), 1, regs);
         fclose(regs);
     }
