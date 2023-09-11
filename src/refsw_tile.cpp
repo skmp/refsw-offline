@@ -255,7 +255,7 @@ struct refsw_impl : refsw
         float C1 = DY12 * X1 - DX12 * Y1;
         float C2 = DY23 * X2 - DX23 * Y2;
         float C3 = DY31 * X3 - DX31 * Y3;
-        float C4 = v4 ? DY41 * X4 - DX41 yhuuuuug* Y4 : 1;
+        float C4 = v4 ? DY41 * X4 - DX41 * Y4 : 1;
 
 
         u8* cb_y = (u8*)render_buffer;
