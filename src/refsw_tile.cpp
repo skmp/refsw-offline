@@ -186,7 +186,7 @@ struct refsw_impl : refsw
     }
 
     // Rasterize a single triangle to ISP (or ISP+TSP for PT)
-    void RasterizeTriangle(RenderMode render_mode, DrawParameters* params, parameter_tag_t tag, int vertex_offset, const Vertex& v1, const Vertex& v2, const Vertex& v3, const Vertex* v4, taRECT* area)
+    void RasterizeTriangle(RenderMode render_mode, DrawParameters* params, parameter_tag_t tag, const Vertex& v1, const Vertex& v2, const Vertex& v3, const Vertex* v4, taRECT* area)
     {
         const int stride_bytes = STRIDE_PIXEL_OFFSET * 4;
         //Plane equation
@@ -205,28 +205,27 @@ struct refsw_impl : refsw
 
         int sgn = 1;
 
+        float tri_area = ((X1 - X3) * (Y2 - Y3) - (Y1 - Y3) * (X2 - X3));
+
+        if (tri_area > 0)
+            sgn = -1;
+
         // cull
-        {
+        if (params->isp.CullMode != 0) {
             //area: (X1-X3)*(Y2-Y3)-(Y1-Y3)*(X2-X3)
-            float area = ((X1 - X3) * (Y2 - Y3) - (Y1 - Y3) * (X2 - X3));
 
-            if (area > 0)
-                sgn = -1;
+            float abs_area = fabsf(tri_area);
 
-            if (params->isp.CullMode != 0) {
-                float abs_area = fabsf(area);
+            if (abs_area < FPU_CULL_VAL)
+                return;
 
-                if (abs_area < FPU_CULL_VAL)
+            if (params->isp.CullMode >= 2) {
+                u32 mode = params->isp.CullMode & 1;
+
+                if (
+                    (mode == 0 && tri_area < 0) ||
+                    (mode == 1 && tri_area > 0)) {
                     return;
-
-                if (params->isp.CullMode >= 2) {
-                    u32 mode = vertex_offset ^ (params->isp.CullMode & 1);
-
-                    if (
-                        (mode == 0 && area < 0) ||
-                        (mode == 1 && area > 0)) {
-                        return;
-                    }
                 }
             }
         }

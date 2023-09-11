@@ -103,9 +103,9 @@ struct refrend : Renderer
         backend->Init();
     }
 
-    void RenderTriangle(RefRendInterface* backend, RenderMode render_mode, DrawParameters* params, parameter_tag_t tag, int vertex_offset, const Vertex& v1, const Vertex& v2, const Vertex& v3, const Vertex* v4, taRECT* area)
+    void RenderTriangle(RefRendInterface* backend, RenderMode render_mode, DrawParameters* params, parameter_tag_t tag, const Vertex& v1, const Vertex& v2, const Vertex& v3, const Vertex* v4, taRECT* area)
     {
-        backend->RasterizeTriangle(render_mode, params, tag, vertex_offset, v1, v2, v3, v4, area);
+        backend->RasterizeTriangle(render_mode, params, tag, v1, v2, v3, v4, area);
 
         if (render_mode == RM_MODIFIER)
         {          
@@ -264,7 +264,10 @@ struct refrend : Renderer
                 auto core_tag = CoreTagFromDesc(params.isp.CacheBypass, obj.tstrip.shadow, obj.tstrip.skip, tag_address, i);
                 parameter_tag_t tag = backend->AddFpuEntry(&params, &vtx[i], render_mode, core_tag);
 
-                RenderTriangle(backend, render_mode, &params, tag, i&1, vtx[i+0], vtx[i+1], vtx[i+2], nullptr, rect);
+                int not_even = i&1;
+                int even = not_even ^ 1;
+
+                RenderTriangle(backend, render_mode, &params, tag, vtx[i+not_even], vtx[i+even], vtx[i+2], nullptr, rect);
             }
         }
     }
@@ -294,7 +297,7 @@ struct refrend : Renderer
                 tag = backend->AddFpuEntry(&params, &vtx[0], render_mode, core_tag);
             }
 
-            RenderTriangle(backend, render_mode, &params, tag, 0, vtx[0], vtx[1], vtx[2], nullptr, rect);
+            RenderTriangle(backend, render_mode, &params, tag, vtx[0], vtx[1], vtx[2], nullptr, rect);
         }
     }
 
@@ -319,7 +322,7 @@ struct refrend : Renderer
             parameter_tag_t tag = backend->AddFpuEntry(&params, &vtx[0], render_mode, core_tag);
 
             //TODO: FIXME
-            RenderTriangle(backend, render_mode, &params, tag, 0, vtx[0], vtx[1], vtx[2], &vtx[3], rect);
+            RenderTriangle(backend, render_mode, &params, tag, vtx[0], vtx[1], vtx[2], &vtx[3], rect);
         }
     }
 
