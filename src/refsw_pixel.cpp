@@ -228,9 +228,9 @@ struct RefPixelPipeline : PixelPipeline {
             }
         }
 
-        rv.bgra[0] = Col[2].Ip(x, y, W) * mult / 256;   // FIXME: why is input in RGBA instead of BGRA here?
+        rv.bgra[0] = Col[0].Ip(x, y, W) * mult / 256;
         rv.bgra[1] = Col[1].Ip(x, y, W) * mult / 256;
-        rv.bgra[2] = Col[0].Ip(x, y, W) * mult / 256;
+        rv.bgra[2] = Col[2].Ip(x, y, W) * mult / 256;
         rv.bgra[3] = Col[3].Ip(x, y, W) * mult / 256;    
 
         if (!pp_UseAlpha)
@@ -253,9 +253,9 @@ struct RefPixelPipeline : PixelPipeline {
             }
         }
 
-        rv.bgra[0] = Ofs[2].Ip(x, y, W) * mult / 256;   // FIXME: why is input in RGBA instead of BGRA here?
+        rv.bgra[0] = Ofs[0].Ip(x, y, W) * mult / 256;
         rv.bgra[1] = Ofs[1].Ip(x, y, W) * mult / 256;
-        rv.bgra[2] = Ofs[0].Ip(x, y, W) * mult / 256;
+        rv.bgra[2] = Ofs[2].Ip(x, y, W) * mult / 256;
         rv.bgra[3] = Ofs[3].Ip(x, y, W);
 
         return rv;

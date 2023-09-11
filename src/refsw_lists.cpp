@@ -108,7 +108,8 @@ struct refrend : Renderer
         backend->RasterizeTriangle(render_mode, params, tag, v1, v2, v3, v4, area);
 
         if (render_mode == RM_MODIFIER)
-        {          
+        {
+            // 0 normal polygon, 1 inside last, 2 outside last
             if (params->isp.modvol.VolumeMode == 1 ) 
             {
                 backend->SummarizeStencilOr();
@@ -157,9 +158,9 @@ struct refrend : Renderer
 	#define vert_packed_color_(to,src) \
 		{ \
 		u32 t=src; \
-		to[2] = (u8)(t);t>>=8;\
-		to[1] = (u8)(t);t>>=8;\
 		to[0] = (u8)(t);t>>=8;\
+		to[1] = (u8)(t);t>>=8;\
+		to[2] = (u8)(t);t>>=8;\
 		to[3] = (u8)(t);      \
 		}
 
