@@ -36,20 +36,27 @@
 */
 struct PlaneStepper3
 {
+    dfix Aa, Ba;
+    cfix C;
     dfix ddx, ddy;
     dfix c;
 
     void Setup(const Vertex& v1, const Vertex& v2, const Vertex& v3, float v1_a, float v2_a, float v3_a)
     {
-        dfix Aa = ((ifix(v3_a) - ifix(v1_a)) * (pfix(v2.y) - pfix(v1.y)) - (ifix(v2_a) - ifix(v1_a)) * (pfix(v3.y) - pfix(v1.y))).unfrac<FRAC_XY>();
-        dfix Ba = ((pfix(v3.x) - pfix(v1.x)) * (ifix(v2_a) - ifix(v1_a)) - (pfix(v2.x) - pfix(v1.x)) * (ifix(v3_a) - ifix(v1_a))).unfrac<FRAC_XY>();
+        Aa = ((ifix(v3_a) - ifix(v1_a)) * (pfix(v2.y) - pfix(v1.y)) - (ifix(v2_a) - ifix(v1_a)) * (pfix(v3.y) - pfix(v1.y))).unfrac<FRAC_XY>();
+        Ba = ((pfix(v3.x) - pfix(v1.x)) * (ifix(v2_a) - ifix(v1_a)) - (pfix(v2.x) - pfix(v1.x)) * (ifix(v3_a) - ifix(v1_a))).unfrac<FRAC_XY>();
 
-        cfix C = ((pfix(v2.x) - pfix(v1.x)) * (pfix(v3.y) - pfix(v1.y)) - (pfix(v3.x) - pfix(v1.x)) * (pfix(v2.y) - pfix(v1.y)));
+        C = ((pfix(v2.x) - pfix(v1.x)) * (pfix(v3.y) - pfix(v1.y)) - (pfix(v3.x) - pfix(v1.x)) * (pfix(v2.y) - pfix(v1.y)));
         
-        ddx = -Aa / C;
-        ddy = -Ba / C;
+        if (C.val != 0) {
+            ddx = -Aa / C;
+            ddy = -Ba / C;
+        } else {
+            ddx = 0;
+            ddy = 0;
+        }
 
-        c = (ifix(v1_a) - (ddx * pfix(v1.x) - ddy * pfix(v1.y)).unfrac<FRAC_XY>());
+        c = (ifix(v1_a) + (-ddx * pfix(v1.x) - ddy * pfix(v1.y)).unfrac<FRAC_XY>());
     }
 
     float Ip(int x, int y) const
@@ -68,15 +75,16 @@ struct PlaneStepper3
 */
 struct PlaneStepper3
 {
+    float Aa, Ba, C;
     float ddx, ddy;
     float c;
 
     void Setup(const Vertex& v1, const Vertex& v2, const Vertex& v3, float v1_a, float v2_a, float v3_a)
     {
-        float Aa = ((v3_a - v1_a) * (v2.y - v1.y) - (v2_a - v1_a) * (v3.y - v1.y));
-        float Ba = ((v3.x - v1.x) * (v2_a - v1_a) - (v2.x - v1.x) * (v3_a - v1_a));
+        Aa = ((v3_a - v1_a) * (v2.y - v1.y) - (v2_a - v1_a) * (v3.y - v1.y));
+        Ba = ((v3.x - v1.x) * (v2_a - v1_a) - (v2.x - v1.x) * (v3_a - v1_a));
 
-        float C = ((v2.x - v1.x) * (v3.y - v1.y) - (v3.x - v1.x) * (v2.y - v1.y));
+        C = ((v2.x - v1.x) * (v3.y - v1.y) - (v3.x - v1.x) * (v2.y - v1.y));
         
         ddx = -Aa / C;
         ddy = -Ba / C;
