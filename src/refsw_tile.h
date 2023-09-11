@@ -28,6 +28,41 @@
 #define ACCUM1_BUFFER_PIXEL_OFFSET  (MAX_RENDER_PIXELS*4)
 #define ACCUM2_BUFFER_PIXEL_OFFSET  (MAX_RENDER_PIXELS*5)
 
+#include "fixed.h"
+
+#if 1
+/*
+    Surface equation solver
+*/
+struct PlaneStepper3
+{
+    dfix ddx, ddy;
+    dfix c;
+
+    void Setup(const Vertex& v1, const Vertex& v2, const Vertex& v3, float v1_a, float v2_a, float v3_a)
+    {
+        dfix Aa = ((ifix(v3_a) - ifix(v1_a)) * (pfix(v2.y) - pfix(v1.y)) - (ifix(v2_a) - ifix(v1_a)) * (pfix(v3.y) - pfix(v1.y))).unfrac<FRAC_XY>();
+        dfix Ba = ((pfix(v3.x) - pfix(v1.x)) * (ifix(v2_a) - ifix(v1_a)) - (pfix(v2.x) - pfix(v1.x)) * (ifix(v3_a) - ifix(v1_a))).unfrac<FRAC_XY>();
+
+        cfix C = ((pfix(v2.x) - pfix(v1.x)) * (pfix(v3.y) - pfix(v1.y)) - (pfix(v3.x) - pfix(v1.x)) * (pfix(v2.y) - pfix(v1.y)));
+        
+        ddx = -Aa / C;
+        ddy = -Ba / C;
+
+        c = (ifix(v1_a) - (ddx * pfix(v1.x) - ddy * pfix(v1.y)).unfrac<FRAC_XY>());
+    }
+
+    float Ip(int x, int y) const
+    {
+        return (x * ddx + y * ddy + c).toFloat();
+    }
+
+    float Ip(int x, int y, float W) const
+    {
+        return Ip(x, y) * W;
+    }
+};
+#else
 /*
     Surface equation solver
 */
@@ -59,6 +94,8 @@ struct PlaneStepper3
         return Ip(x, y) * W;
     }
 };
+
+#endif
 
 /*
     Interpolation helper

@@ -5,6 +5,7 @@
 
 template<unsigned frac_bits>
 class fixed {
+    public:
 
     template<unsigned frac_bits2 = frac_bits>
     static fixed<frac_bits2> fromFixed(int v) {
@@ -19,10 +20,9 @@ class fixed {
         return rv;
     }
     
-    public:
 
-    static constexpr int frac_mul_i = 1 << frac_bits;
-    static constexpr double frac_mul_f = 1 << frac_bits;
+    static constexpr int64_t frac_mul_i = 1LL << frac_bits;
+    static constexpr double frac_mul_f = 1LL << frac_bits;
     int64_t val;
 
     fixed() {
@@ -38,6 +38,14 @@ class fixed {
         return fromFixed<frac_bits + other_frac_bits>(val * rhs.val);
     }
 
+    template <unsigned other_frac_bits>
+    fixed<frac_bits> operator/(fixed<other_frac_bits> rhs) const {
+        return fromFixed<frac_bits>( (val <<other_frac_bits) / rhs.val);
+    }
+
+    fixed<frac_bits> operator-() const {
+        return fromFixed<frac_bits>(-val);
+    }
 
     bool operator>=(int rhs) const {
         return toInt() >= rhs;
@@ -126,10 +134,22 @@ class fixed {
         return val >> frac_bits;
     }
 
-
+    float toFloat() const {
+        return val / frac_mul_f;
+    }
 };
 
 template <unsigned frac_bits>
 fixed<frac_bits> operator*(const int lhs, const fixed<frac_bits> rhs) {
-    return lhs * rhs.val;
+    return fixed<frac_bits>::fromFixed(lhs * rhs.val);
 }
+
+#define FRAC_XY 8 //XY get 8 bits of precision
+#define pfix fixed<FRAC_XY>
+#define cfix fixed<FRAC_XY*2>
+
+#define FRAC_DIFF 32
+#define dfix fixed<FRAC_DIFF>
+
+#define FRAC_INTERP 32
+#define ifix fixed<FRAC_INTERP>

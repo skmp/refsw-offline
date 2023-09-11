@@ -23,10 +23,6 @@
 
 #include "fixed.h"
 
-#define FRAC_XY 8 //XY get 8 bits of precision
-#define pfix fixed<FRAC_XY>
-#define cfix fixed<FRAC_XY*2>
-
 static int mmin(pfix a, pfix b, pfix c, int d)
 {
     return a.min(b).min(c).max(pfix::fromInt(d)).toInt();
