@@ -21,30 +21,20 @@
 #include <emmintrin.h>
 #include <smmintrin.h>
 
-#if BUILD_COMPILER==COMPILER_CLANG
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wunused-function"
-#endif
-static int iround(float x)
-{
-    return _mm_cvtt_ss2si(_mm_load_ss(&x));
-}
-#if BUILD_COMPILER==COMPILER_CLANG
-#pragma clang diagnostic pop
-#endif
+#include "fixed.h"
 
-static float mmin(float a, float b, float c, float d)
+#define FRAC_XY 8 //XY get 8 bits of precision
+#define pfix fixed<FRAC_XY>
+#define cfix fixed<FRAC_XY*2>
+
+static int mmin(pfix a, pfix b, pfix c, int d)
 {
-    float rv = min(a, b);
-    rv = min(c, rv);
-    return max(d, rv);
+    return a.min(b).min(c).max(pfix::fromInt(d)).toInt();
 }
 
-static float mmax(float a, float b, float c, float d)
+static int mmax(pfix a, pfix b, pfix c, int d)
 {
-    float rv = max(a, b);
-    rv = max(c, rv);
-    return min(d, rv);
+    return a.max(b).max(c).min(pfix::fromInt(d)).toInt();
 }
 
 struct refsw_impl : refsw
@@ -185,27 +175,31 @@ struct refsw_impl : refsw
         return entry->tsp(entry, x, y, 1/invW, rb);
     }
 
+
     // Rasterize a single triangle to ISP (or ISP+TSP for PT)
     void RasterizeTriangle(RenderMode render_mode, DrawParameters* params, parameter_tag_t tag, const Vertex& v1, const Vertex& v2, const Vertex& v3, const Vertex* v4, taRECT* area)
     {
         const int stride_bytes = STRIDE_PIXEL_OFFSET * 4;
         //Plane equation
 
-#define FLUSH_NAN(a) isnan(a) ? 0 : a
+#define FLUSH_NAN(a) isnan(a) ? 0.f : a
+        const pfix p0 = pfix::fromInt(0);
+        const pfix p1 = pfix::fromInt(1);
+        const cfix c1 = cfix::fromInt(1);
 
-        const float Y1 = FLUSH_NAN(v1.y);
-        const float Y2 = FLUSH_NAN(v2.y);
-        const float Y3 = FLUSH_NAN(v3.y);
-        const float Y4 = v4 ? FLUSH_NAN(v4->y) : 0;
+        const pfix Y1 = FLUSH_NAN(v1.y);
+        const pfix Y2 = FLUSH_NAN(v2.y);
+        const pfix Y3 = FLUSH_NAN(v3.y);
+        const pfix Y4 = v4 ? FLUSH_NAN(v4->y) : 0;
 
-        const float X1 = FLUSH_NAN(v1.x);
-        const float X2 = FLUSH_NAN(v2.x);
-        const float X3 = FLUSH_NAN(v3.x);
-        const float X4 = v4 ? FLUSH_NAN(v4->x) : 0;
+        const pfix X1 = FLUSH_NAN(v1.x);
+        const pfix X2 = FLUSH_NAN(v2.x);
+        const pfix X3 = FLUSH_NAN(v3.x);
+        const pfix X4 = v4 ? FLUSH_NAN(v4->x) : 0;
 
         int sgn = 1;
 
-        float tri_area = ((X1 - X3) * (Y2 - Y3) - (Y1 - Y3) * (X2 - X3));
+        pfix tri_area = ((X1 - X3) * (Y2 - Y3) - (Y1 - Y3) * (X2 - X3)).unfrac<8>();
 
         if (tri_area > 0)
             sgn = -1;
@@ -214,9 +208,9 @@ struct refsw_impl : refsw
         if (params->isp.CullMode != 0) {
             //area: (X1-X3)*(Y2-Y3)-(Y1-Y3)*(X2-X3)
 
-            float abs_area = fabsf(tri_area);
+            auto abs_area = tri_area.abs();
 
-            if (abs_area < FPU_CULL_VAL)
+            if (pfix(FPU_CULL_VAL) > abs_area)
                 return;
 
             if (params->isp.CullMode >= 2) {
@@ -234,28 +228,28 @@ struct refsw_impl : refsw
         int minx = mmin(X1, X2, X3, area->left);
         int miny = mmin(Y1, Y2, Y3, area->top);
 
-        int spanx = mmax(X1+1, X2+1, X3+1, area->right - 1) - minx + 1;
-        int spany = mmax(Y1+1, Y2+1, Y3+1, area->bottom - 1) - miny + 1;
+        int spanx = mmax(X1+p1, X2+p1, X3+p1, area->right - 1) - minx + 1;
+        int spany = mmax(Y1+p1, Y2+p1, Y3+p1, area->bottom - 1) - miny + 1;
 
         //Inside scissor area?
         if (spanx < 0 || spany < 0)
             return;
 
         // Half-edge constants
-        const float DX12 = sgn * (X1 - X2);
-        const float DX23 = sgn * (X2 - X3);
-        const float DX31 = v4 ? sgn * (X3 - X4) : sgn * (X3 - X1);
-        const float DX41 = v4 ? sgn * (X4 - X1) : 0;
+        const pfix DX12 = sgn * (X1 - X2);
+        const pfix DX23 = sgn * (X2 - X3);
+        const pfix DX31 = v4 ? sgn * (X3 - X4) : sgn * (X3 - X1);
+        const pfix DX41 = v4 ? sgn * (X4 - X1) : p0;
 
-        const float DY12 = sgn * (Y1 - Y2);
-        const float DY23 = sgn * (Y2 - Y3);
-        const float DY31 = v4 ? sgn * (Y3 - Y4) : sgn * (Y3 - Y1);
-        const float DY41 = v4 ? sgn * (Y4 - Y1) : 0;
+        const pfix DY12 = sgn * (Y1 - Y2);
+        const pfix DY23 = sgn * (Y2 - Y3);
+        const pfix DY31 = v4 ? sgn * (Y3 - Y4) : sgn * (Y3 - Y1);
+        const pfix DY41 = v4 ? sgn * (Y4 - Y1) : p0;
 
-        float C1 = DY12 * X1 - DX12 * Y1;
-        float C2 = DY23 * X2 - DX23 * Y2;
-        float C3 = DY31 * X3 - DX31 * Y3;
-        float C4 = v4 ? DY41 * X4 - DX41 * Y4 : 1;
+        const cfix C1 = (DY12 * X1 - DX12 * Y1);
+        const cfix C2 = DY23 * X2 - DX23 * Y2;
+        const cfix C3 = DY31 * X3 - DX31 * Y3;
+        const cfix C4 = v4 ? DY41 * X4 - DX41 * Y4 : c1;
 
 
         u8* cb_y = (u8*)render_buffer;
@@ -264,9 +258,9 @@ struct refsw_impl : refsw
         PlaneStepper3 Z;
         Z.Setup(v1, v2, v3, v1.z, v2.z, v3.z);
 
-        float halfpixel = HALF_OFFSET.fpu_pixel_half_offset ? 0.5f : 0;
-        float y_ps = miny + halfpixel;
-        float minx_ps = minx + halfpixel;
+        pfix halfpixel = HALF_OFFSET.fpu_pixel_half_offset ? 0.5f : 0;
+        pfix y_ps = pfix::fromInt(miny) + halfpixel;
+        pfix minx_ps = pfix::fromInt(minx) + halfpixel;
 
         auto pixelFlush = pixelPipeline->GetIsp(render_mode, params->isp);
 
@@ -274,28 +268,28 @@ struct refsw_impl : refsw
         for (int y = spany; y > 0; y -= 1)
         {
             u8* cb_x = cb_y;
-            float x_ps = minx_ps;
+            pfix x_ps = minx_ps;
             for (int x = spanx; x > 0; x -= 1)
             {
-                float Xhs12 = C1 + DX12 * y_ps - DY12 * x_ps;
-                float Xhs23 = C2 + DX23 * y_ps - DY23 * x_ps;
-                float Xhs31 = C3 + DX31 * y_ps - DY31 * x_ps;
-                float Xhs41 = C4 + DX41 * y_ps - DY41 * x_ps;
+                cfix Xhs12 = C1 + DX12 * y_ps - DY12 * x_ps;
+                cfix Xhs23 = C2 + DX23 * y_ps - DY23 * x_ps;
+                cfix Xhs31 = C3 + DX31 * y_ps - DY31 * x_ps;
+                cfix Xhs41 = C4 + DX41 * y_ps - DY41 * x_ps;
 
                 bool inTriangle = Xhs12 >= 0 && Xhs23 >= 0 && Xhs31 >= 0 && Xhs41 >= 0;
 
                 if (inTriangle)
                 {
-                    float invW = Z.Ip(x_ps, y_ps);
-                    pixelFlush(this, x_ps, y_ps, invW, cb_x, tag);
+                    float invW = Z.Ip(x_ps.toInt(), y_ps.toInt());
+                    pixelFlush(this, x_ps.toInt(), y_ps.toInt(), invW, cb_x, tag);
                 }
 
                 cb_x += 4;
-                x_ps = x_ps + 1;
+                x_ps = x_ps + p1;
             }
         next_y:
             cb_y += stride_bytes;
-            y_ps = y_ps + 1;
+            y_ps = y_ps + p1;
         }
     }
     
