@@ -31,12 +31,12 @@ KOS_INIT_ROMDISK(romdisk);
 #define START 0x14
 #define FB_W_SOF1 0x60
 
-#define PVR_REG(num) (*(voilatile uint32_t*)(PVR_REG_BASE + num))
+#define PVR_REG(num) (*(volatile uint32_t*)(PVR_REG_BASE + num))
 
 #define PVR_MEM_32_BASE ((volatile void*)0xA5000000)
 #define PVR_MEM_SIZE (8 * 1024 * 1024)
 
-#define INTERRUPT_REG ((volatile void*)0xA05F6900)
+#define INTERRUPT_REG (*(volatile uint32_t*)0xA05F6900)
 #define VIDEO_DONE 1
 
 /* Your program's main entry point */
@@ -109,7 +109,7 @@ int main(int argc, char **argv) {
 
     volatile uint16_t *FB_W = PVR_REG(FB_W_SOF1);
 
-    printf("uint16_t fb_data[]={\n")
+    printf("uint16_t fb_data[]={\n");
     for (int i = 0; i < (640 * 240); i++) {
         printf("%x,", FB_W[i]);
     }
