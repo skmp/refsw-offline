@@ -25,7 +25,7 @@ KOS_INIT_FLAGS(INIT_DEFAULT | INIT_MALLOCSTATS);
 /* And specify a romdisk, if you want one (or leave it out) */
 KOS_INIT_ROMDISK(romdisk);
 
-#define PVR_REG_BASE 0xA005f800
+#define PVR_REG_BASE 0xA05f8000
 
 #define SOFT_RESET 0x8
 #define START 0x14
@@ -107,9 +107,9 @@ int main(int argc, char **argv) {
         FB_W_SOF1 is where things were written to
     */
 
-    volatile uint16_t *FB_W = PVR_REG(FB_W_SOF1);
+    volatile uint16_t *FB_W = PVR_REG(FB_W_SOF1) | 0xA5000000;
 
-    printf("uint16_t fb_data[]={\n");
+    printf("//%x\nuint16_t fb_data[]={\n", FB_W);
     for (int i = 0; i < (640 * 240); i++) {
         printf("%x,", FB_W[i]);
     }

@@ -559,8 +559,10 @@ struct refrend : Renderer
         #if !defined(REFSW_OFFLINE)
         u32 addr = SPG_CONTROL.interlace && SPG_STATUS.fieldnum ? FB_R_SOF2 : FB_R_SOF1;
         #else
-        u32 addr = FB_W_SOF1;
+        u32 addr = SCALER_CTL.interlace && SCALER_CTL.fieldsel ? FB_W_SOF2 : FB_W_SOF1;
         #endif
+
+        addr &= ~3;
 
         static PixelBuffer<u32> pb;
         if (pb.total_pixels != width * (SPG_CONTROL.interlace ? (height * 2 + 1) : height)) {
