@@ -16,23 +16,6 @@
 #include "refsw_tile.h"
 #include "refsw_pixel.h"
 
-#include <mmintrin.h>
-#include <xmmintrin.h>
-#include <emmintrin.h>
-#include <smmintrin.h>
-
-#if BUILD_COMPILER==COMPILER_CLANG
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wunused-function"
-#endif
-static int iround(float x)
-{
-    return _mm_cvtt_ss2si(_mm_load_ss(&x));
-}
-#if BUILD_COMPILER==COMPILER_CLANG
-#pragma clang diagnostic pop
-#endif
-
 static float mmin(float a, float b, float c, float d)
 {
     float rv = min(a, b);
@@ -308,12 +291,12 @@ struct refsw_impl : refsw
     }
 
     void operator delete(void* p) {
-        _mm_free(p);
+        free(p);
     }
 };
 
 Renderer* rend_refsw(u8* vram) {
     return rend_refred_base(vram, [=]() { 
-        return (RefRendInterface*) new(_mm_malloc(sizeof(refsw_impl), 32)) ::refsw_impl(vram, Create_RefPixelPipeline());
+        return (RefRendInterface*) new(aligned_alloc(32, sizeof(refsw_impl))) ::refsw_impl(vram, Create_RefPixelPipeline());
     });
 }

@@ -150,6 +150,7 @@ union TCW
 };
 
 /// END Texture Control Word
+#pragma pack(pop) 
 
 //generic vertex storage type
 struct Vertex

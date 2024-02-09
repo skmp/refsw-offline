@@ -14,4 +14,7 @@ g++ \
     -DTARGET_LINUX_x64 -DREFSW_OFFLINE -DFEAT_HAS_SOFTREND -DFEAT_TA=0x60000002 \
     -lpng -lz \
     -g -O0 \
-    -o refsw-offline
+    -o refsw-offline \
+    -std=c++20 \
+    -I /opt/homebrew/include/ \
+    -L /opt/homebrew/lib/

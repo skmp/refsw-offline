@@ -61,7 +61,7 @@
     tag buffer is used to sort the pixels by tag as well as depth in order to support co-planar polygons.
 */
 
-#include <omp.h>
+//#include <omp.h>
 #include "Renderer_if.h"
 #include "pvr_mem.h"
 #include "oslib.h"

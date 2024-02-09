@@ -13,11 +13,6 @@
 #include <cmath>
 #include <cfloat>
 
-#include <mmintrin.h>
-#include <xmmintrin.h>
-#include <emmintrin.h>
-#include <smmintrin.h>
-
 union mem128i {
     uint8_t m128i_u8[16];
     int8_t m128i_i8[16];

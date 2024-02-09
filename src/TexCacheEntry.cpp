@@ -38,10 +38,6 @@ Compression
 #define GL_UNSIGNED_BYTE 3
 #endif
 
-#if FEAT_HAS_SOFTREND
-	#include <xmmintrin.h>
-#endif
-
 u32 decoded_colors[3][65536];
 
 
@@ -237,7 +233,7 @@ void TextureCacheData::Create()
 		texconv32 = NULL;
 	}
 
-	pData = (u16*)_mm_malloc(w * h * 16, 16);
+	pData = (u16*)aligned_alloc(16, w * h * 16);
 
 	if (size == 0) {
 		size = 4;
@@ -335,7 +331,7 @@ void TextureCacheData::CacheFromVram()
 	
 bool TextureCacheData::Delete()
 {
-	_mm_free(pData);
+	free(pData);
 	pData = 0;
 	
 	return true;
