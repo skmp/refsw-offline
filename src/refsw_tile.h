@@ -36,7 +36,7 @@ struct PlaneStepper3
     float ddx, ddy;
     float c;
 
-    void Setup(const Vertex& v1, const Vertex& v2, const Vertex& v3, float v1_a, float v2_a, float v3_a)
+    void Setup(taRECT *rect, const Vertex& v1, const Vertex& v2, const Vertex& v3, float v1_a, float v2_a, float v3_a)
     {
         float Aa = ((v3_a - v1_a) * (v2.y - v1.y) - (v2_a - v1_a) * (v3.y - v1.y));
         float Ba = ((v3.x - v1.x) * (v2_a - v1_a) - (v2.x - v1.x) * (v3_a - v1_a));
@@ -46,7 +46,7 @@ struct PlaneStepper3
         ddx = -Aa / C;
         ddy = -Ba / C;
 
-        c = (v1_a - ddx * v1.x - ddy * v1.y);
+        c = v1_a - ddx * (v1.x - rect->left) - ddy * (v1.y - rect->top);
     }
 
     float Ip(float x, float y) const
@@ -70,7 +70,7 @@ struct IPs3
     PlaneStepper3 Col[4];
     PlaneStepper3 Ofs[4];
 
-    void Setup(DrawParameters* params, text_info* texture, const Vertex& v1, const Vertex& v2, const Vertex& v3)
+    void Setup(taRECT *rect, DrawParameters* params, text_info* texture, const Vertex& v1, const Vertex& v2, const Vertex& v3)
     {
         u32 w = 0, h = 0;
         if (texture) {
@@ -78,20 +78,20 @@ struct IPs3
             h = texture->height;
         }
 
-        U.Setup(v1, v2, v3, v1.u * w * v1.z, v2.u * w * v2.z, v3.u * w * v3.z);
-        V.Setup(v1, v2, v3, v1.v * h * v1.z, v2.v * h * v2.z, v3.v * h * v3.z);
+        U.Setup(rect, v1, v2, v3, v1.u * w * v1.z, v2.u * w * v2.z, v3.u * w * v3.z);
+        V.Setup(rect, v1, v2, v3, v1.v * h * v1.z, v2.v * h * v2.z, v3.v * h * v3.z);
         if (params->isp.Gouraud) {
             for (int i = 0; i < 4; i++)
-                Col[i].Setup(v1, v2, v3, v1.col[i] * v1.z, v2.col[i] * v2.z, v3.col[i] * v3.z);
+                Col[i].Setup(rect, v1, v2, v3, v1.col[i] * v1.z, v2.col[i] * v2.z, v3.col[i] * v3.z);
 
             for (int i = 0; i < 4; i++)
-                Ofs[i].Setup(v1, v2, v3, v1.spc[i] * v1.z, v2.spc[i] * v2.z, v3.spc[i] * v3.z);
+                Ofs[i].Setup(rect, v1, v2, v3, v1.spc[i] * v1.z, v2.spc[i] * v2.z, v3.spc[i] * v3.z);
         } else {
             for (int i = 0; i < 4; i++)
-                Col[i].Setup(v1, v2, v3, v3.col[i] * v1.z, v3.col[i] * v2.z, v3.col[i] * v3.z);
+                Col[i].Setup(rect, v1, v2, v3, v3.col[i] * v1.z, v3.col[i] * v2.z, v3.col[i] * v3.z);
 
             for (int i = 0; i < 4; i++)
-                Ofs[i].Setup(v1, v2, v3, v3.spc[i] * v1.z, v3.spc[i] * v2.z, v3.spc[i] * v3.z);
+                Ofs[i].Setup(rect, v1, v2, v3, v3.spc[i] * v1.z, v3.spc[i] * v2.z, v3.spc[i] * v3.z);
         }
     }
 };

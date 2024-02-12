@@ -115,13 +115,13 @@ struct refsw_impl : refsw
 
         for (int y = 0; y < 32; y++) {
             for (int x = 0; x < 32; x++) {
-                PixelFlush_tsp(this, tileX + x + halfpixel, tileY + y + halfpixel, (u8*)rb,  *(f32*)&rb[DEPTH1_BUFFER_PIXEL_OFFSET],  *(parameter_tag_t*)&rb[PARAM_BUFFER_PIXEL_OFFSET]);
+                PixelFlush_tsp(this, x + halfpixel, y + halfpixel, (u8*)rb,  *(f32*)&rb[DEPTH1_BUFFER_PIXEL_OFFSET],  *(parameter_tag_t*)&rb[PARAM_BUFFER_PIXEL_OFFSET]);
                 rb++;
             }
         }
     }
 
-    parameter_tag_t AddFpuEntry(DrawParameters* params, Vertex* vtx, RenderMode render_mode, ISP_BACKGND_T_type core_tag)
+    parameter_tag_t AddFpuEntry(taRECT *rect, DrawParameters* params, Vertex* vtx, RenderMode render_mode, ISP_BACKGND_T_type core_tag)
     {
         auto cache = fpu_entires_lookup.find(core_tag.full);
         if (cache != fpu_entires_lookup.end()) {
@@ -136,7 +136,7 @@ struct refsw_impl : refsw
             entry.texture = raw_GetTexture(vram, entry.params.tsp, entry.params.tcw);
         }
 
-        entry.ips.Setup(params, &entry.texture, vtx[0], vtx[1], vtx[2]);
+        entry.ips.Setup(rect, params, &entry.texture, vtx[0], vtx[1], vtx[2]);
 
         entry.tsp = pixelPipeline->GetTsp(entry.params.isp, entry.params.tsp);
         entry.textureFetch = pixelPipeline->GetTextureFetch(entry.params.tsp);
@@ -235,21 +235,21 @@ struct refsw_impl : refsw
         const float DY31 = v4 ? sgn * (Y3 - Y4) : sgn * (Y3 - Y1);
         const float DY41 = v4 ? sgn * (Y4 - Y1) : 0;
 
-        float C1 = DY12 * X1 - DX12 * Y1;
-        float C2 = DY23 * X2 - DX23 * Y2;
-        float C3 = DY31 * X3 - DX31 * Y3;
-        float C4 = v4 ? DY41 * X4 - DX41 * Y4 : 1;
+        float C1 = DY12 * (X1 - area->left) - DX12 * (Y1 - area->top);
+        float C2 = DY23 * (X2 - area->left) - DX23 * (Y2 - area->top);
+        float C3 = DY31 * (X3 - area->left) - DX31 * (Y3 - area->top);
+        float C4 = v4 ? DY41 * (X4 + area->left) - DX41 * (Y4 + area->top) : 1;
 
 
         u8* cb_y = (u8*)render_buffer;
         cb_y += (miny - area->top) * stride_bytes + (minx - area->left) * 4;
 
         PlaneStepper3 Z;
-        Z.Setup(v1, v2, v3, v1.z, v2.z, v3.z);
+        Z.Setup(area, v1, v2, v3, v1.z, v2.z, v3.z);
 
         float halfpixel = HALF_OFFSET.fpu_pixel_half_offset ? 0.5f : 0;
-        float y_ps = miny + halfpixel;
-        float minx_ps = minx + halfpixel;
+        float y_ps = miny - area->top + halfpixel;
+        float minx_ps = minx - area->left + halfpixel;
 
         auto pixelFlush = pixelPipeline->GetIsp(render_mode, params->isp);
 

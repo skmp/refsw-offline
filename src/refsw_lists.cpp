@@ -263,7 +263,7 @@ struct refrend : Renderer
             {
 
                 auto core_tag = CoreTagFromDesc(params.isp.CacheBypass, obj.tstrip.shadow, obj.tstrip.skip, tag_address, i);
-                parameter_tag_t tag = backend->AddFpuEntry(&params, &vtx[i], render_mode, core_tag);
+                parameter_tag_t tag = backend->AddFpuEntry(rect, &params, &vtx[i], render_mode, core_tag);
 
                 int not_even = i&1;
                 int even = not_even ^ 1;
@@ -295,7 +295,7 @@ struct refrend : Renderer
             if (render_mode != RM_MODIFIER)
             {
                 auto core_tag = CoreTagFromDesc(params.isp.CacheBypass, obj.tstrip.shadow, obj.tstrip.skip, tag_address, 0);
-                tag = backend->AddFpuEntry(&params, &vtx[0], render_mode, core_tag);
+                tag = backend->AddFpuEntry(rect, &params, &vtx[0], render_mode, core_tag);
             }
 
             RenderTriangle(backend, render_mode, &params, tag, vtx[0], vtx[1], vtx[2], nullptr, rect);
@@ -320,7 +320,7 @@ struct refrend : Renderer
             param_ptr = decode_pvr_vetrices(&params, tag_address, obj.qarray.skip, obj.qarray.shadow, vtx, 4);
             
             auto core_tag = CoreTagFromDesc(params.isp.CacheBypass, obj.qarray.shadow, obj.qarray.skip, tag_address, 0);
-            parameter_tag_t tag = backend->AddFpuEntry(&params, &vtx[0], render_mode, core_tag);
+            parameter_tag_t tag = backend->AddFpuEntry(rect, &params, &vtx[0], render_mode, core_tag);
 
             //TODO: FIXME
             RenderTriangle(backend, render_mode, &params, tag, vtx[0], vtx[1], vtx[2], &vtx[3], rect);
@@ -396,7 +396,7 @@ struct refrend : Renderer
                 DrawParameters params;
                 Vertex vtx[8];
                 decode_pvr_vetrices(&params, PARAM_BASE + ISP_BACKGND_T.tag_address * 4, ISP_BACKGND_T.skip, ISP_BACKGND_T.shadow, vtx, 8);
-                bgTag = backend->AddFpuEntry(&params, &vtx[ISP_BACKGND_T.tag_offset], RM_OPAQUE, ISP_BACKGND_T);
+                bgTag = backend->AddFpuEntry(&rect, &params, &vtx[ISP_BACKGND_T.tag_offset], RM_OPAQUE, ISP_BACKGND_T);
             }
 
             // Tile needs clear?
