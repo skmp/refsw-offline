@@ -233,7 +233,7 @@ void TextureCacheData::Create()
 		texconv32 = NULL;
 	}
 
-	pData = (u16*)aligned_alloc(16, w * h * 16);
+	pData = (u16*)aligned_alloc(16, w * h * 4);
 
 	if (size == 0) {
 		size = 4;
@@ -291,18 +291,7 @@ void TextureCacheData::CacheFromVram()
 
 	u32 *tex_data = (u32 *)temp_tex_buffer;
 
-	for (int y = 0; y < h; y++)
-	{
-		for (int x = 0; x < w; x++)
-		{
-			u32 *data = (u32 *)&pData[(x + y * w) * 8];
-
-			data[0] = tex_data[(x + 1) % w + (y + 1) % h * w];
-			data[1] = tex_data[(x + 0) % w + (y + 1) % h * w];
-			data[2] = tex_data[(x + 1) % w + (y + 0) % h * w];
-			data[3] = tex_data[(x + 0) % w + (y + 0) % h * w];
-		}
-	}
+	memcpy(pData, tex_data, w * h * 4);
 
 	if (tcw.VQ_Comp)
 	{

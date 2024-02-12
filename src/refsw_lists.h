@@ -34,7 +34,7 @@ enum RenderMode {
     RM_COUNT
 };
 
-#define TAG_INVALID 1
+#define TAG_INVALID (1 << 31)
 
 typedef u32 parameter_tag_t;
 
@@ -51,7 +51,7 @@ struct RefRendInterface
     virtual void ClearBuffers(u32 paramValue, float depthValue, u32 stencilValue) = 0;
 
     // Clear only the param buffer (used for peeling)
-    virtual void ClearParamBuffer(u32 paramValue) = 0;
+    virtual void ClearParamBuffer(parameter_tag_t paramValue) = 0;
 
     // Clear and set DEPTH2 for peeling
     virtual void PeelBuffers(float depthValue, u32 stencilValue) = 0;
@@ -67,9 +67,6 @@ struct RefRendInterface
 
     // Get the pixel drawn counter. Used during layer peeling to determine when to stop processing
     virtual u32 GetPixelsDrawn() = 0;
-
-    // Add an entry to the fpu parameters list
-    virtual parameter_tag_t AddFpuEntry(taRECT *rect, DrawParameters* params, Vertex* vtx, RenderMode render_mode, ISP_BACKGND_T_type core_tag) = 0;
 
     // Clear the fpu parameters list
     virtual void ClearFpuEntries() = 0;

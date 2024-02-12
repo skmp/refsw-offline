@@ -57,7 +57,7 @@ struct refsw_impl : refsw
         }
     }
 
-    void ClearParamBuffer(u32 paramValue) {
+    void ClearParamBuffer(parameter_tag_t paramValue) {
         auto pb = reinterpret_cast<parameter_tag_t*>(render_buffer + PARAM_BUFFER_PIXEL_OFFSET);
 
         for (int i = 0; i < MAX_RENDER_PIXELS; i++) {
@@ -112,59 +112,141 @@ struct refsw_impl : refsw
 
         auto rb = render_buffer;
         float halfpixel = HALF_OFFSET.tsp_pixel_half_offset ? 0.5f : 0;
+        taRECT rect;
+        rect.left = tileX;
+        rect.top = tileY;
+        rect.bottom = rect.top + 32;
+        rect.right = rect.left + 32;
 
         for (int y = 0; y < 32; y++) {
             for (int x = 0; x < 32; x++) {
-                PixelFlush_tsp(this, x + halfpixel, y + halfpixel, (u8*)rb,  *(f32*)&rb[DEPTH1_BUFFER_PIXEL_OFFSET],  *(parameter_tag_t*)&rb[PARAM_BUFFER_PIXEL_OFFSET]);
+                auto tag =  *(parameter_tag_t*)&rb[PARAM_BUFFER_PIXEL_OFFSET];
+                if (!(tag & TAG_INVALID)) {
+                    ISP_BACKGND_T_type t;
+                    t.full = tag;
+                    auto Entry = GetFpuEntry(&rect, rm, t);
+                    PixelFlush_tsp(&Entry, x + halfpixel, y + halfpixel, (u8*)rb,  *(f32*)&rb[DEPTH1_BUFFER_PIXEL_OFFSET]);
+                }
                 rb++;
             }
         }
     }
 
-    parameter_tag_t AddFpuEntry(taRECT *rect, DrawParameters* params, Vertex* vtx, RenderMode render_mode, ISP_BACKGND_T_type core_tag)
+    void ClearFpuEntries() {
+
+    }
+
+    f32 f16(u16 v)
     {
-        auto cache = fpu_entires_lookup.find(core_tag.full);
-        if (cache != fpu_entires_lookup.end()) {
-            return cache->second;
+        u32 z=v<<16;
+        return *(f32*)&z;
+    }
+
+	#define vert_packed_color_(to,src) \
+		{ \
+		u32 t=src; \
+		to[0] = (u8)(t);t>>=8;\
+		to[1] = (u8)(t);t>>=8;\
+		to[2] = (u8)(t);t>>=8;\
+		to[3] = (u8)(t);      \
+		}
+
+  //decode a vertex in the native pvr format
+    void decode_pvr_vertex(DrawParameters* params, pvr32addr_t ptr,Vertex* cv)
+    {
+        //XYZ
+        //UV
+        //Base Col
+        //Offset Col
+
+        //XYZ are _allways_ there :)
+        cv->x=vrf(vram, ptr);ptr+=4;
+        cv->y=vrf(vram, ptr);ptr+=4;
+        cv->z=vrf(vram, ptr);ptr+=4;
+
+        if (params->isp.Texture)
+        {	//Do texture , if any
+            if (params->isp.UV_16b)
+            {
+                u32 uv=vri(vram, ptr);
+                cv->u = f16((u16)(uv >>16));
+                cv->v = f16((u16)(uv >> 0));
+                ptr+=4;
+            }
+            else
+            {
+                cv->u=vrf(vram, ptr);ptr+=4;
+                cv->v=vrf(vram, ptr);ptr+=4;
+            }
         }
 
+        //Color
+        u32 col=vri(vram, ptr);ptr+=4;
+        vert_packed_color_(cv->col,col);
+        if (params->isp.Offset)
+        {
+            //Intensity color
+            u32 col=vri(vram, ptr);ptr+=4;
+            vert_packed_color_(cv->spc,col);
+        }
+    }
+
+    // decode an object (params + vertexes)
+    u32 decode_pvr_vetrices(DrawParameters* params, pvr32addr_t base, u32 skip, u32 shadow, Vertex* vtx, int count, int offset)
+    {
+        bool PSVM=FPU_SHAD_SCALE.intensity_shadow == 0;
+
+        if (!PSVM) {
+            shadow = 0; // no double volume stuff
+        }
+
+        params->isp.full=vri(vram, base);
+        params->tsp.full=vri(vram, base+4);
+        params->tcw.full=vri(vram, base+8);
+
+        base += 12;
+        if (shadow) {
+            params->tsp2.full=vri(vram, base+0);
+            params->tcw2.full=vri(vram, base+4);
+            base += 8;
+        }
+
+        for (int i = 0; i < offset; i++) {
+            base += (3 + skip * (shadow+1)) * 4;
+        }
+
+        for (int i = 0; i < count; i++) {
+            decode_pvr_vertex(params,base, &vtx[i]);
+            base += (3 + skip * (shadow+1)) * 4;
+        }
+
+        return base;
+    }
+
+    FpuEntry GetFpuEntry(taRECT *rect, RenderMode render_mode, ISP_BACKGND_T_type core_tag)
+    {
         FpuEntry entry;
-        entry.params = *params;
+        Vertex vtx[3];
+        decode_pvr_vetrices(&entry.params, PARAM_BASE + core_tag.tag_address * 4, core_tag.skip, core_tag.shadow, vtx, 3, core_tag.tag_offset);
         // generate
         if (entry.params.isp.Texture)
         {
             entry.texture = raw_GetTexture(vram, entry.params.tsp, entry.params.tcw);
         }
 
-        entry.ips.Setup(rect, params, &entry.texture, vtx[0], vtx[1], vtx[2]);
+        entry.ips.Setup(rect, &entry.params, &entry.texture, vtx[0], vtx[1], vtx[2]);
 
         entry.tsp = pixelPipeline->GetTsp(entry.params.isp, entry.params.tsp);
         entry.textureFetch = pixelPipeline->GetTextureFetch(entry.params.tsp);
         entry.colorCombiner = pixelPipeline->GetColorCombiner(entry.params.isp, entry.params.tsp);
         entry.blendingUnit = pixelPipeline->GetBlendingUnit(render_mode, entry.params.tsp);
 
-        fpu_entires.push_back(entry);
-
-        parameter_tag_t tag = (parameter_tag_t)(fpu_entires.size() << 1);
-
-        fpu_entires_lookup[core_tag.full] = tag;
-
-        return tag;
-    }
-
-    void ClearFpuEntries() {
-        fpu_entires.clear();
-        fpu_entires_lookup.clear();
+        return entry;
     }
 
     // Lookup/create cached TSP parameters, and call PixelFlush_tsp
-    static bool PixelFlush_tsp(refsw* backend, float x, float y, u8 *rb, float invW, parameter_tag_t tag)
-    {
-        if (tag & TAG_INVALID)
-            return false;
-
-        auto entry = &backend->fpu_entires[(tag>>1) - 1];
-        
+    static bool PixelFlush_tsp(FpuEntry* entry, float x, float y, u8 *rb, float invW)
+    {   
         return entry->tsp(entry, x, y, 1/invW, rb);
     }
 

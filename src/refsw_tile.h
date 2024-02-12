@@ -141,9 +141,6 @@ struct FpuEntry
 
 struct refsw : RefRendInterface
 {
-    vector<FpuEntry> fpu_entires;
-    map<u32, parameter_tag_t> fpu_entires_lookup;
-
     // Used by layer peeling to determine end of processing
     int PixelsDrawn;
 };

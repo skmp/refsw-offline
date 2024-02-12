@@ -99,21 +99,16 @@ struct RefPixelPipeline : PixelPipeline {
         int ui = u * 256 + halfpixel;
         int vi = v * 256 + halfpixel;
 
-        #if FULL_FILTERING
-            auto offset00 = ClampFlip<pp_ClampU, pp_FlipU>((ui >> 8) + 1, texture->width) + ClampFlip<pp_ClampV, pp_FlipV>((vi >> 8) + 1, texture->height) * texture->width;
-            auto offset01 = ClampFlip<pp_ClampU, pp_FlipU>((ui >> 8) + 0, texture->width) + ClampFlip<pp_ClampV, pp_FlipV>((vi >> 8) + 1, texture->height) * texture->width;
-            auto offset10 = ClampFlip<pp_ClampU, pp_FlipU>((ui >> 8) + 1, texture->width) + ClampFlip<pp_ClampV, pp_FlipV>((vi >> 8) + 0, texture->height) * texture->width;
-            auto offset11 = ClampFlip<pp_ClampU, pp_FlipU>((ui >> 8) + 0, texture->width) + ClampFlip<pp_ClampV, pp_FlipV>((vi >> 8) + 0, texture->height) * texture->width;
+        auto offset00 = ClampFlip<pp_ClampU, pp_FlipU>((ui >> 8) + 1, texture->width) + ClampFlip<pp_ClampV, pp_FlipV>((vi >> 8) + 1, texture->height) * texture->width;
+        auto offset01 = ClampFlip<pp_ClampU, pp_FlipU>((ui >> 8) + 0, texture->width) + ClampFlip<pp_ClampV, pp_FlipV>((vi >> 8) + 1, texture->height) * texture->width;
+        auto offset10 = ClampFlip<pp_ClampU, pp_FlipU>((ui >> 8) + 1, texture->width) + ClampFlip<pp_ClampV, pp_FlipV>((vi >> 8) + 0, texture->height) * texture->width;
+        auto offset11 = ClampFlip<pp_ClampU, pp_FlipU>((ui >> 8) + 0, texture->width) + ClampFlip<pp_ClampV, pp_FlipV>((vi >> 8) + 0, texture->height) * texture->width;
 
-            mem128i px;
-            px.m128i_u32[0] =  ((mem128i *)texture->pdata)[offset00].m128i_u32[3];
-            px.m128i_u32[1] =  ((mem128i *)texture->pdata)[offset01].m128i_u32[3];
-            px.m128i_u32[2] =  ((mem128i *)texture->pdata)[offset10].m128i_u32[3];
-            px.m128i_u32[3] =  ((mem128i *)texture->pdata)[offset11].m128i_u32[3];
-        #else
-            auto offset = ClampFlip<pp_ClampU, pp_FlipU>(ui >> 8, texture->width) + ClampFlip<pp_ClampV, pp_FlipV>(vi >> 8, texture->height) * texture->width;
-            mem128i px = ((mem128i *)texture->pdata)[offset];
-        #endif
+        mem128i px;
+        px.m128i_u32[0] =  ((u32 *)texture->pdata)[offset00];
+        px.m128i_u32[1] =  ((u32 *)texture->pdata)[offset01];
+        px.m128i_u32[2] =  ((u32 *)texture->pdata)[offset10];
+        px.m128i_u32[3] =  ((u32 *)texture->pdata)[offset11];
 
         Color textel = {0xAF674839};
 
@@ -437,10 +432,8 @@ struct RefPixelPipeline : PixelPipeline {
         return entry->blendingUnit(cb, col);
     }
     // Lookup/create cached TSP parameters, and call PixelFlush_tsp
-    static bool AlphaTest_tsp(refsw* backend, float x, float y, u8 *rb, float invW, parameter_tag_t tag)
-    {
-        auto entry = &backend->fpu_entires[tag-1];
-        
+    static bool AlphaTest_tsp(FpuEntry* entry, float x, float y, u8 *rb, float invW)
+    {        
         return entry->tsp(entry, x, y, 1/invW, rb);
     }
 
@@ -504,8 +497,8 @@ struct RefPixelPipeline : PixelPipeline {
             case RM_PUNCHTHROUGH:
             {
                 // Z + TSP syncronized for alpha test
-
-                if (AlphaTest_tsp(backend, x, y, pb, invW, tag))
+                // TODO: Implement layer peeling front-to-back here
+                //if (AlphaTest_tsp(backend, x, y, pb, invW, tag))
                 {
                     *zb = invW;
                     *(parameter_tag_t *)pb = tag;
@@ -520,6 +513,7 @@ struct RefPixelPipeline : PixelPipeline {
                     return;
 
                 if (invW == *zb || invW == *zb2) {
+                    return; // TODO: FIGURE OUT WHY THIS IS BROKEN and/or needed
                     auto tagExisting = *(parameter_tag_t *)pb;
 
                     if (tagExisting & TAG_INVALID)
