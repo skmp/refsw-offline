@@ -17,4 +17,5 @@ g++ \
     -o refsw-offline \
     -std=c++20 \
     -I /opt/homebrew/include/ \
-    -L /opt/homebrew/lib/
+    -L /opt/homebrew/lib/ \
+    -w
