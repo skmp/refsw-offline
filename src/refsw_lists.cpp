@@ -319,7 +319,7 @@ struct refrend : Renderer
             u32 tag_address = param_ptr;
             param_ptr = decode_pvr_vetrices(&params, tag_address, obj.qarray.skip, obj.qarray.shadow, vtx, 4);
             
-            auto core_tag = CoreTagFromDesc(params.isp.CacheBypass, obj.tstrip.shadow, obj.tstrip.skip, tag_address, 0);
+            auto core_tag = CoreTagFromDesc(params.isp.CacheBypass, obj.qarray.shadow, obj.qarray.skip, tag_address, 0);
             parameter_tag_t tag = backend->AddFpuEntry(&params, &vtx[0], render_mode, core_tag);
 
             //TODO: FIXME
