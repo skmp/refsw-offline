@@ -12,6 +12,7 @@
 #include "pvr_mem.h"
 #include "pvr_regs.h"
 
+
 using namespace std;
 using namespace std::filesystem;
 
@@ -40,7 +41,7 @@ int main(int argc, char **argv)
 
     printf("loading vram from '%s'... likely to not work for 16mb vram ...\n", path_vram.c_str());
     {
-        FILE* v0 = fopen(path_vram.c_str(), "rb");
+        FILE* v0 = fopen((const char*)path_vram.c_str(), "rb");
         if (!v0) {
             printf("Failed\n");
             return -1;
@@ -55,7 +56,7 @@ int main(int argc, char **argv)
     
     printf("loading pvr regs from '%s'...\n", path_pvr_regs.c_str());
     {
-        FILE* regs = fopen(path_pvr_regs.c_str(), "rb");
+        FILE* regs = fopen((const char*)path_pvr_regs.c_str(), "rb");
         if (!regs) {
             printf("Failed\n");
             return -1;

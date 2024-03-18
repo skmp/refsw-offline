@@ -68,7 +68,7 @@
 #include "TexCache.h"
 #include "TexConv.h"  // for pixel buffer, used for presenting
 
-#include <png.h>
+// #include <png.h>
 
 #include <cmath>
 #include <float.h>
@@ -78,6 +78,7 @@
 #include "pvr_regs.h"
 
 #if HOST_OS == OS_WINDOWS
+#include <Windows.h>
 static BITMAPINFOHEADER bi = { sizeof(BITMAPINFOHEADER), 0, 0, 1, 32, BI_RGB };
 #endif
 

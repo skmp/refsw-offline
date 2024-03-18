@@ -233,7 +233,7 @@ void TextureCacheData::Create()
 		texconv32 = NULL;
 	}
 
-	pData = (u16*)aligned_alloc(16, w * h * 4);
+	pData = (u16*)malloc(w * h * 4);
 
 	if (size == 0) {
 		size = 4;

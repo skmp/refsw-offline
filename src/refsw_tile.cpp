@@ -32,11 +32,11 @@ static float mmax(float a, float b, float c, float d)
 
 struct refsw_impl : refsw
 {
-    __attribute__((aligned(32))) u32 render_buffer[MAX_RENDER_PIXELS * 6]; //param pointers + depth1 + depth2 + stencil + acum 1 + acum 2
-    unique_ptr<PixelPipeline> pixelPipeline;
+    u32 render_buffer[MAX_RENDER_PIXELS * 6]; //param pointers + depth1 + depth2 + stencil + acum 1 + acum 2
+    unique_ptr<RefPixelPipeline> pixelPipeline;
 
     u8* vram;
-    refsw_impl(u8* vram, PixelPipeline* pixelPipeline) : vram(vram), pixelPipeline(pixelPipeline) {
+    refsw_impl(u8* vram, RefPixelPipeline* pixelPipeline) : vram(vram), pixelPipeline(pixelPipeline) {
         
     }
 
@@ -236,10 +236,10 @@ struct refsw_impl : refsw
 
         entry.ips.Setup(rect, &entry.params, &entry.texture, vtx[0], vtx[1], vtx[2]);
 
-        entry.tsp = pixelPipeline->GetTsp(entry.params.isp, entry.params.tsp);
-        entry.textureFetch = pixelPipeline->GetTextureFetch(entry.params.tsp);
-        entry.colorCombiner = pixelPipeline->GetColorCombiner(entry.params.isp, entry.params.tsp);
-        entry.blendingUnit = pixelPipeline->GetBlendingUnit(render_mode, entry.params.tsp);
+        entry.tsp = pixelPipeline->PixelFlush_tsp;
+        entry.textureFetch = pixelPipeline->TextureFetch;
+        entry.colorCombiner = pixelPipeline->ColorCombiner; // GetColorCombiner(entry.params.isp, entry.params.tsp);
+        entry.blendingUnit = pixelPipeline->BlendingUnit;   // GetBlendingUnit(render_mode, entry.params.tsp);
 
         return entry;
     }
@@ -379,6 +379,6 @@ struct refsw_impl : refsw
 
 Renderer* rend_refsw(u8* vram) {
     return rend_refred_base(vram, [=]() { 
-        return (RefRendInterface*) new(aligned_alloc(32, sizeof(refsw_impl))) ::refsw_impl(vram, Create_RefPixelPipeline());
+        return (RefRendInterface*) new(malloc(sizeof(refsw_impl))) ::refsw_impl(vram, Create_RefPixelPipeline());
     });
 }

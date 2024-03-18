@@ -109,16 +109,11 @@ union Color {
         u8 a;
     };
 };
-
+/*
 struct PixelPipeline {
     // lookup tables
-    typedef void(*IspFn)(refsw* backend, float x, float y, float invW, u8 *pb, parameter_tag_t tag);
-    typedef bool(*TspFn)(const FpuEntry *entry, float x, float y, float invW, u8 *pb);
-    typedef Color(*TextureFetchFn)(const text_info *texture, float u, float v);
-    typedef Color(*ColorCombinerFn)(Color base, Color textel, Color offset);
-    typedef bool(*BlendingUnitFn)(Color* cb, Color col);
 
-    virtual IspFn GetIsp(RenderMode render_mode, ISP_TSP isp)= 0;
+//  virtual IspFn GetIsp(RenderMode render_mode, ISP_TSP isp)= 0;
     virtual TspFn GetTsp(ISP_TSP isp, TSP tsp)= 0;
     virtual TextureFetchFn GetTextureFetch(TSP tsp)= 0;
     virtual ColorCombinerFn GetColorCombiner(ISP_TSP isp, TSP tsp)= 0;
@@ -126,6 +121,15 @@ struct PixelPipeline {
 
     virtual ~PixelPipeline() { }
 };
+*/
+
+typedef void(*IspFn)(refsw* backend, 
+	RenderMode render_mode, u32 depth_mode,
+	float x, float y, float invW, u8 *pb, parameter_tag_t tag);
+typedef bool(*TspFn)(const FpuEntry *entry, float x, float y, float invW, u8 *pb);
+typedef Color(*TextureFetchFn)(bool pp_IgnoreTexA,  bool pp_ClampU, bool pp_ClampV, bool pp_FlipU, bool pp_FlipV, u32 pp_FilterMode,const text_info *texture, float u, float v);
+typedef Color(*ColorCombinerFn)(bool pp_Texture, bool pp_Offset, u32 pp_ShadInstr, Color base, Color textel, Color offset);
+typedef bool(*BlendingUnitFn)(bool pp_AlphaTest, u32 pp_SrcSel, u32 pp_DstSel, u32 pp_SrcInst, u32 pp_DstInst, Color* cb, Color col);
 
 // Used for deferred TSP processing lookups
 struct FpuEntry
@@ -133,10 +137,10 @@ struct FpuEntry
     IPs3 ips;
     DrawParameters params;
     text_info texture;
-    PixelPipeline::TspFn tsp;
-    PixelPipeline::TextureFetchFn textureFetch;
-    PixelPipeline::ColorCombinerFn colorCombiner;
-    PixelPipeline::BlendingUnitFn blendingUnit;
+    TspFn tsp;
+    TextureFetchFn textureFetch;
+    ColorCombinerFn colorCombiner;
+    BlendingUnitFn blendingUnit;
 };
 
 struct refsw : RefRendInterface
