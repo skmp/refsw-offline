@@ -125,7 +125,7 @@ struct refsw_impl : refsw
                     ISP_BACKGND_T_type t;
                     t.full = tag;
                     auto Entry = GetFpuEntry(&rect, rm, t);
-                    PixelFlush_tsp(&Entry, x + halfpixel, y + halfpixel, (u8*)rb,  *(f32*)&rb[DEPTH1_BUFFER_PIXEL_OFFSET]);
+                    PixelFlush_tsp(rm == RM_PUNCHTHROUGH, &Entry, x + halfpixel, y + halfpixel, (u8*)rb,  *(f32*)&rb[DEPTH1_BUFFER_PIXEL_OFFSET]);
                 }
                 rb++;
             }
@@ -236,18 +236,21 @@ struct refsw_impl : refsw
 
         entry.ips.Setup(rect, &entry.params, &entry.texture, vtx[0], vtx[1], vtx[2]);
 
-        entry.tsp = pixelPipeline->PixelFlush_tsp;
-        entry.textureFetch = pixelPipeline->TextureFetch;
-        entry.colorCombiner = pixelPipeline->ColorCombiner; // GetColorCombiner(entry.params.isp, entry.params.tsp);
-        entry.blendingUnit = pixelPipeline->BlendingUnit;   // GetBlendingUnit(render_mode, entry.params.tsp);
+        // entry.tsp = pixelPipeline->PixelFlush_tsp;
+        // entry.textureFetch = pixelPipeline->TextureFetch;
+        // entry.colorCombiner = pixelPipeline->ColorCombiner; // GetColorCombiner(entry.params.isp, entry.params.tsp);
+        // entry.blendingUnit = pixelPipeline->BlendingUnit;   // GetBlendingUnit(render_mode, entry.params.tsp);
 
         return entry;
     }
 
     // Lookup/create cached TSP parameters, and call PixelFlush_tsp
-    static bool PixelFlush_tsp(FpuEntry* entry, float x, float y, u8 *rb, float invW)
+    bool PixelFlush_tsp(bool pp_AlphaTest, FpuEntry* entry, float x, float y, u8 *rb, float invW)
     {   
-        return entry->tsp(entry, x, y, 1/invW, rb);
+        return pixelPipeline->PixelFlush_tsp(entry->params.tsp.UseAlpha, entry->params.isp.Texture, entry->params.isp.Offset, entry->params.tsp.ColorClamp, entry->params.tsp.FogCtrl,
+                                            entry->params.tsp.IgnoreTexA, entry->params.tsp.ClampU, entry->params.tsp.ClampV, entry->params.tsp.FlipU,  entry->params.tsp.FlipV,  entry->params.tsp.FilterMode,  entry->params.tsp.ShadInstr,  
+                                            pp_AlphaTest,  entry->params.tsp.SrcSelect,  entry->params.tsp.DstSelect,  entry->params.tsp.SrcInstr,  entry->params.tsp.DstInstr,
+                                            entry, x, y, 1/invW, rb);
     }
 
     // Rasterize a single triangle to ISP (or ISP+TSP for PT)
@@ -333,7 +336,7 @@ struct refsw_impl : refsw
         float y_ps = miny - area->top + halfpixel;
         float minx_ps = minx - area->left + halfpixel;
 
-        auto pixelFlush = pixelPipeline->GetIsp(render_mode, params->isp);
+        //auto pixelFlush = pixelPipeline->GetIsp(render_mode, params->isp);
 
         // Loop through pixels
         for (int y = spany; y > 0; y -= 1)
@@ -352,7 +355,7 @@ struct refsw_impl : refsw
                 if (inTriangle)
                 {
                     float invW = Z.Ip(x_ps, y_ps);
-                    pixelFlush(this, x_ps, y_ps, invW, cb_x, tag);
+                    pixelPipeline->PixelFlush_isp(this, render_mode, params->isp.DepthMode, x_ps, y_ps, invW, cb_x, tag);
                 }
 
                 cb_x += 4;
@@ -379,6 +382,6 @@ struct refsw_impl : refsw
 
 Renderer* rend_refsw(u8* vram) {
     return rend_refred_base(vram, [=]() { 
-        return (RefRendInterface*) new(malloc(sizeof(refsw_impl))) ::refsw_impl(vram, Create_RefPixelPipeline());
+        return (RefRendInterface*) new refsw_impl(vram, new RefPixelPipeline());
     });
 }

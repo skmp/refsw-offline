@@ -68,8 +68,6 @@
 #include "TexCache.h"
 #include "TexConv.h"  // for pixel buffer, used for presenting
 
-// #include <png.h>
-
 #include <cmath>
 #include <float.h>
 
@@ -80,6 +78,8 @@
 #if HOST_OS == OS_WINDOWS
 #include <Windows.h>
 static BITMAPINFOHEADER bi = { sizeof(BITMAPINFOHEADER), 0, 0, 1, 32, BI_RGB };
+#else
+#include <png.h>
 #endif
 
 #include "refsw_lists.h"

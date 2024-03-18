@@ -402,7 +402,7 @@ struct RefPixelPipeline /* : PixelPipeline */ {
 
     // Implement the full texture/shade pipeline for a pixel
     static bool PixelFlush_tsp(
-		bool pp_UseAlpha, bool pp_Texture, bool pp_Offset, bool pp_ColorClamp, u32 pp_FogCtrl,
+		bool pp_UseAlpha, bool pp_Texture, bool pp_Offset, bool pp_ColorClamp, u32 pp_FogCtrl, bool pp_IgnoreAlpha, bool pp_ClampU, bool pp_ClampV, bool pp_FlipU, bool pp_FlipV, u32 pp_FilterMode, u32 pp_ShadInstr, bool pp_AlphaTest, u32 pp_SrcSel, u32 pp_DstSel, u32 pp_SrcInst, u32 pp_DstInst,
 		const FpuEntry *entry, float x, float y, float W, u8 *rb)
     {
         //auto zb = (float *)&rb[DEPTH1_BUFFER_PIXEL_OFFSET * 4];
@@ -420,24 +420,17 @@ struct RefPixelPipeline /* : PixelPipeline */ {
             float u = entry->ips.U.Ip(x, y, W);
             float v = entry->ips.V.Ip(x, y, W);
 
-// TODO     textel = entry->textureFetch(&entry->texture, u, v);
+            textel = TextureFetch(pp_IgnoreAlpha, pp_ClampU, pp_ClampV, pp_FlipU, pp_FlipV, pp_FilterMode, &entry->texture, u, v);
             if (pp_Offset) {
                 offs = InterpolateOffs(true, entry->ips.Ofs, x, y, W, *stencil);
             }
         }
 
-        Color col; col.raw = 0;/* //TODO	entry->colorCombiner(base, textel, offs); */
+        Color col = ColorCombiner(pp_Texture, pp_Offset, pp_ShadInstr, base, textel, offs);
         
         col = FogUnit(pp_Offset, pp_ColorClamp, pp_FogCtrl, col, 1/W, offs.a);
 
-//TODO	return entry->blendingUnit(cb, col)
-		return false;
-    }
-    // Lookup/create cached TSP parameters, and call PixelFlush_tsp
-    static bool AlphaTest_tsp(FpuEntry* entry, float x, float y, u8 *rb, float invW)
-    {        
-//TODO        return entry->tsp(entry, x, y, 1/invW, rb);
-		return false;
+		return BlendingUnit(pp_AlphaTest, pp_SrcSel, pp_DstSel, pp_SrcInst, pp_DstInst, cb, col);
     }
 
     // Depth processing for a pixel -- render_mode 0: OPAQ, 1: PT, 2: TRANS

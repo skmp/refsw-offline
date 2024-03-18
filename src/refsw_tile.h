@@ -137,10 +137,10 @@ struct FpuEntry
     IPs3 ips;
     DrawParameters params;
     text_info texture;
-    TspFn tsp;
-    TextureFetchFn textureFetch;
-    ColorCombinerFn colorCombiner;
-    BlendingUnitFn blendingUnit;
+    // TspFn tsp;
+    // TextureFetchFn textureFetch;
+    // ColorCombinerFn colorCombiner;
+    // BlendingUnitFn blendingUnit;
 };
 
 struct refsw : RefRendInterface
