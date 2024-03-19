@@ -6,7 +6,6 @@ g++ \
         src/main.cpp \
         src/refsw_lists.cpp \
         src/refsw_tile.cpp \
-        src/refsw_pixel.cpp \
         src/pvr_regs.cpp \
         src/pvr_mem.cpp \
         src/TexCache.cpp \
