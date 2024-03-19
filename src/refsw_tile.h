@@ -20,12 +20,6 @@
 
 #define STRIDE_PIXEL_OFFSET MAX_RENDER_WIDTH
 
-#define PARAM_BUFFER_PIXEL_OFFSET   0
-#define DEPTH1_BUFFER_PIXEL_OFFSET  (MAX_RENDER_PIXELS*1)
-#define DEPTH2_BUFFER_PIXEL_OFFSET  (MAX_RENDER_PIXELS*2)
-#define STENCIL_BUFFER_PIXEL_OFFSET (MAX_RENDER_PIXELS*3)
-#define ACCUM1_BUFFER_PIXEL_OFFSET  (MAX_RENDER_PIXELS*4)
-#define ACCUM2_BUFFER_PIXEL_OFFSET  (MAX_RENDER_PIXELS*5)
 
 typedef float    ZType;
 typedef u8       StencilType;
@@ -119,7 +113,6 @@ union Color {
 // Used by layer peeling to determine end of processing
 extern int PixelsDrawn;
 
-extern u32 render_buffer[MAX_RENDER_PIXELS * 6]; //param pointers + depth1 + depth2 + stencil + acum 1 + acum 2
 extern parameter_tag_t tagBuffer    [MAX_RENDER_PIXELS];
 extern StencilType     stencilBuffer[MAX_RENDER_PIXELS];
 extern u32             colorBuffer1 [MAX_RENDER_PIXELS];
@@ -149,7 +142,7 @@ u32 decode_pvr_vetrices(DrawParameters* params, pvr32addr_t base, u32 skip, u32 
 
 FpuEntry GetFpuEntry(taRECT *rect, RenderMode render_mode, ISP_BACKGND_T_type core_tag);
 // Lookup/create cached TSP parameters, and call PixelFlush_tsp
-bool PixelFlush_tsp(bool pp_AlphaTest, FpuEntry* entry, float x, float y, u8 *rb, float invW);
+bool PixelFlush_tsp(bool pp_AlphaTest, FpuEntry* entry, float x, float y, u32 index, float invW);
 // Rasterize a single triangle to ISP (or ISP+TSP for PT)
 void RasterizeTriangle(RenderMode render_mode, DrawParameters* params, parameter_tag_t tag, const Vertex& v1, const Vertex& v2, const Vertex& v3, const Vertex* v4, taRECT* area);
 u8* GetColorOutputBuffer();
@@ -158,10 +151,10 @@ u8* DebugGetAllBuffers();
 // Implement the full texture/shade pipeline for a pixel
 bool PixelFlush_tsp(
     bool pp_UseAlpha, bool pp_Texture, bool pp_Offset, bool pp_ColorClamp, u32 pp_FogCtrl, bool pp_IgnoreAlpha, bool pp_ClampU, bool pp_ClampV, bool pp_FlipU, bool pp_FlipV, u32 pp_FilterMode, u32 pp_ShadInstr, bool pp_AlphaTest, u32 pp_SrcSel, u32 pp_DstSel, u32 pp_SrcInst, u32 pp_DstInst,
-    const FpuEntry *entry, float x, float y, float W, u8 *rb);
+    const FpuEntry *entry, float x, float y, float W, u32 index);
 
 // Depth processing for a pixel -- render_mode 0: OPAQ, 1: PT, 2: TRANS
-void PixelFlush_isp(RenderMode render_mode, u32 depth_mode, int pixIdx, float x, float y, float invW, u8 *pb, ZType* zb, parameter_tag_t tag);
+void PixelFlush_isp(RenderMode render_mode, u32 depth_mode, float x, float y, float invW, u32 index, parameter_tag_t tag);
 
 
 /*

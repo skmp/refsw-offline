@@ -48,8 +48,8 @@ static float mmax(float a, float b, float c, float d)
 void ClearBuffers(u32 paramValue, float depthValue, u32 stencilValue)
 {
     auto zb = depthBuffer1;
-    auto stencil = reinterpret_cast<u32*>(render_buffer + STENCIL_BUFFER_PIXEL_OFFSET);
-    auto pb = reinterpret_cast<parameter_tag_t*>(render_buffer + PARAM_BUFFER_PIXEL_OFFSET);
+    auto stencil = stencilBuffer;
+    auto pb = tagBuffer;
 
     for (int i = 0; i < MAX_RENDER_PIXELS; i++) {
         zb[i] = depthValue;
@@ -59,7 +59,7 @@ void ClearBuffers(u32 paramValue, float depthValue, u32 stencilValue)
 }
 
 void ClearParamBuffer(parameter_tag_t paramValue) {
-    auto pb = reinterpret_cast<parameter_tag_t*>(render_buffer + PARAM_BUFFER_PIXEL_OFFSET);
+    auto pb = tagBuffer;
 
     for (int i = 0; i < MAX_RENDER_PIXELS; i++) {
         pb[i] = paramValue;
@@ -69,8 +69,8 @@ void ClearParamBuffer(parameter_tag_t paramValue) {
 void PeelBuffers(float depthValue, u32 stencilValue)
 {
     auto zb = depthBuffer1;
-    auto zb2 = reinterpret_cast<float*>(render_buffer + DEPTH2_BUFFER_PIXEL_OFFSET);
-    auto stencil = reinterpret_cast<u32*>(render_buffer + STENCIL_BUFFER_PIXEL_OFFSET);
+    auto zb2 = depthBuffer2;
+    auto stencil = stencilBuffer;
 
     for (int i = 0; i < MAX_RENDER_PIXELS; i++) {
         zb2[i] = zb[i];     // keep old ZB for reference
@@ -80,7 +80,7 @@ void PeelBuffers(float depthValue, u32 stencilValue)
 }
 
 void SummarizeStencilOr() {
-    auto stencil = reinterpret_cast<u32*>(render_buffer + STENCIL_BUFFER_PIXEL_OFFSET);
+    auto stencil = stencilBuffer;
 
     // post movdol merge INSIDE
     for (int i = 0; i < MAX_RENDER_PIXELS; i++) {
@@ -89,7 +89,7 @@ void SummarizeStencilOr() {
 }
 
 void SummarizeStencilAnd() {
-    auto stencil = reinterpret_cast<u32*>(render_buffer + STENCIL_BUFFER_PIXEL_OFFSET);
+    auto stencil = stencilBuffer;
 
     // post movdol merge OUTSIDE
     for (int i = 0; i < MAX_RENDER_PIXELS; i++) {
@@ -123,12 +123,13 @@ void RenderParamTags(RenderMode rm, int tileX, int tileY) {
 
     for (int y = 0; y < 32; y++) {
         for (int x = 0; x < 32; x++) {
-            auto tag =  *(parameter_tag_t*)&rb[PARAM_BUFFER_PIXEL_OFFSET];
+            auto index = y * 32 + x;
+            auto tag =  tagBuffer[index];
             if (!(tag & TAG_INVALID)) {
                 ISP_BACKGND_T_type t;
                 t.full = tag;
                 auto Entry = GetFpuEntry(&rect, rm, t);
-                PixelFlush_tsp(rm == RM_PUNCHTHROUGH, &Entry, x + halfpixel, y + halfpixel, (u8*)rb,  *(f32*)dz);
+                PixelFlush_tsp(rm == RM_PUNCHTHROUGH, &Entry, x + halfpixel, y + halfpixel, index, depthBuffer1[index]);
             }
             rb++;
 			dz++;
@@ -156,7 +157,7 @@ f32 f16(u16 v)
 	}
 
 //decode a vertex in the native pvr format
-void decode_pvr_vertex(DrawParameters* params, pvr32addr_t ptr,Vertex* cv)
+void decode_pvr_vertex(DrawParameters* params, pvr32addr_t ptr, Vertex* cv)
 {
     //XYZ
     //UV
@@ -244,12 +245,12 @@ FpuEntry GetFpuEntry(taRECT *rect, RenderMode render_mode, ISP_BACKGND_T_type co
 }
 
 // Lookup/create cached TSP parameters, and call PixelFlush_tsp
-bool PixelFlush_tsp(bool pp_AlphaTest, FpuEntry* entry, float x, float y, u8 *rb, float invW)
+bool PixelFlush_tsp(bool pp_AlphaTest, FpuEntry* entry, float x, float y, u32 index, float invW)
 {   
     return PixelFlush_tsp(entry->params.tsp.UseAlpha, entry->params.isp.Texture, entry->params.isp.Offset, entry->params.tsp.ColorClamp, entry->params.tsp.FogCtrl,
                                         entry->params.tsp.IgnoreTexA, entry->params.tsp.ClampU, entry->params.tsp.ClampV, entry->params.tsp.FlipU,  entry->params.tsp.FlipV,  entry->params.tsp.FilterMode,  entry->params.tsp.ShadInstr,  
                                         pp_AlphaTest,  entry->params.tsp.SrcSelect,  entry->params.tsp.DstSelect,  entry->params.tsp.SrcInstr,  entry->params.tsp.DstInstr,
-                                        entry, x, y, 1/invW, rb);
+                                        entry, x, y, 1/invW, index);
 }
 
 // Rasterize a single triangle to ISP (or ISP+TSP for PT)
@@ -342,12 +343,8 @@ void RasterizeTriangle(RenderMode render_mode, DrawParameters* params, parameter
     //auto pixelFlush = pixelPipeline->GetIsp(render_mode, params->isp);
 
     // Loop through ALL pixels in the tile (no smart clipping)
-	int pixidx = 0;
 	for (int y = 0; y < 32; y++)
     {
-        u8*    cb_x = cb_y;
-		ZType* dz_x = dz_y;
-
         float x_ps = minx_ps;
         for (int x = 0; x < 32; x++)
         {
@@ -361,13 +358,11 @@ void RasterizeTriangle(RenderMode render_mode, DrawParameters* params, parameter
 			bool inClip     = (x >= area->left) && (x < area->right) && (y >= area->top) && ( y < area->bottom);
 
             if (inTriangle) {
+                u32 index = y * 32 + x;
                 float invW = Z.Ip(x_ps, y_ps);
-                PixelFlush_isp(render_mode, params->isp.DepthMode, pixidx, x_ps, y_ps, invW, cb_x, dz_x, tag);
+                PixelFlush_isp(render_mode, params->isp.DepthMode, x_ps, y_ps, invW, index, tag);
             }
 
-			pixidx++;
-            cb_x += 4;
-			dz_x++;
             x_ps = x_ps + 1;
         }
     next_y:
@@ -378,7 +373,7 @@ void RasterizeTriangle(RenderMode render_mode, DrawParameters* params, parameter
 }
     
 u8* GetColorOutputBuffer() {
-    return reinterpret_cast<u8*>(render_buffer + ACCUM1_BUFFER_PIXEL_OFFSET);
+    return (u8*)colorBuffer1;
 }
 
 u8* DebugGetAllBuffers() {
@@ -723,11 +718,11 @@ static Color FogUnit(bool pp_Offset, bool pp_ColorClamp, u32 pp_FogCtrl, Color c
 // Implement the full texture/shade pipeline for a pixel
 bool PixelFlush_tsp(
 	bool pp_UseAlpha, bool pp_Texture, bool pp_Offset, bool pp_ColorClamp, u32 pp_FogCtrl, bool pp_IgnoreAlpha, bool pp_ClampU, bool pp_ClampV, bool pp_FlipU, bool pp_FlipV, u32 pp_FilterMode, u32 pp_ShadInstr, bool pp_AlphaTest, u32 pp_SrcSel, u32 pp_DstSel, u32 pp_SrcInst, u32 pp_DstInst,
-	const FpuEntry *entry, float x, float y, float W, u8 *rb)
+	const FpuEntry *entry, float x, float y, float W, u32 index)
 {
-    auto stencil = (u32 *)&rb[STENCIL_BUFFER_PIXEL_OFFSET * 4];
-    auto cb = (Color*)&rb[ACCUM1_BUFFER_PIXEL_OFFSET * 4];
-    auto pb = (parameter_tag_t*)&rb[PARAM_BUFFER_PIXEL_OFFSET * 4];
+    auto stencil = stencilBuffer + index;
+    auto cb = (Color*)colorBuffer1 + index;
+    auto pb = tagBuffer + index;
 
     *pb |= TAG_INVALID;
 
@@ -753,10 +748,12 @@ bool PixelFlush_tsp(
 }
 
 // Depth processing for a pixel -- render_mode 0: OPAQ, 1: PT, 2: TRANS
-void PixelFlush_isp(RenderMode render_mode, u32 depth_mode, int pixIdx, float x, float y, float invW, u8 *pb, ZType* zb, parameter_tag_t tag)
+void PixelFlush_isp(RenderMode render_mode, u32 depth_mode, float x, float y, float invW, u32 index, parameter_tag_t tag)
 {
-    auto zb2 = (float*)&pb[DEPTH2_BUFFER_PIXEL_OFFSET * 4];
-    auto stencil = (u32*)&pb[STENCIL_BUFFER_PIXEL_OFFSET * 4];
+    auto pb = tagBuffer + index;
+    auto zb = depthBuffer1 + index;
+    auto zb2 = depthBuffer2 + index;
+    auto stencil = stencilBuffer + index;
 
     auto mode = depth_mode;
         
@@ -794,7 +791,7 @@ void PixelFlush_isp(RenderMode render_mode, u32 depth_mode, int pixIdx, float x,
             // Z pre-pass only
 
             *zb = invW;
-            *(parameter_tag_t *)pb = tag;
+            *pb = tag;
         }
         break;
 
@@ -814,7 +811,7 @@ void PixelFlush_isp(RenderMode render_mode, u32 depth_mode, int pixIdx, float x,
             //if (AlphaTest_tsp(x, y, pb, invW, tag))
             {
                 *zb = invW;
-                *(parameter_tag_t *)pb = tag;
+                *pb = tag;
             }
         }
         break;
@@ -844,7 +841,7 @@ void PixelFlush_isp(RenderMode render_mode, u32 depth_mode, int pixIdx, float x,
             PixelsDrawn++;
 
             *zb = invW;
-            *(parameter_tag_t *)pb = tag;
+            *pb = tag;
         }
         break;
     }
