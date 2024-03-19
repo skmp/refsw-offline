@@ -8,7 +8,7 @@
 
 #include <filesystem>
 
-#include "Renderer_if.h"
+#include "refsw_tile.h"
 #include "pvr_mem.h"
 #include "pvr_regs.h"
 
@@ -17,9 +17,6 @@ using namespace std;
 using namespace std::filesystem;
 
 settings_t settings;
-
-Renderer* rend_refsw(u8* vram);
-Renderer* rend_refsw_debug(u8* vram);
 
 u8 vram[VRAM_SIZE];
 
@@ -68,7 +65,7 @@ int main(int argc, char **argv)
 
     printf("Rendering ...\n");
 
-    auto rend = rend_refsw(vram);
+    refrend* rend = new refrend(vram, new refsw_impl(vram));
 
     rend->Init();
 

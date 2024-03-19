@@ -7,7 +7,6 @@
 #include "pvr_regs.h"
 #include "pvr_mem.h"
 #include "core_structs.h"
-#include "Renderer_if.h"
 
 #include "TexCache.h"
 
@@ -28,6 +27,7 @@
 #define ACCUM1_BUFFER_PIXEL_OFFSET  (MAX_RENDER_PIXELS*4)
 #define ACCUM2_BUFFER_PIXEL_OFFSET  (MAX_RENDER_PIXELS*5)
 
+typedef float ZType;
 /*
     Surface equation solver
 */
@@ -123,13 +123,61 @@ struct PixelPipeline {
 };
 */
 
-typedef void(*IspFn)(refsw* backend, 
-	RenderMode render_mode, u32 depth_mode,
-	float x, float y, float invW, u8 *pb, parameter_tag_t tag);
-typedef bool(*TspFn)(const FpuEntry *entry, float x, float y, float invW, u8 *pb);
-typedef Color(*TextureFetchFn)(bool pp_IgnoreTexA,  bool pp_ClampU, bool pp_ClampV, bool pp_FlipU, bool pp_FlipV, u32 pp_FilterMode,const text_info *texture, float u, float v);
-typedef Color(*ColorCombinerFn)(bool pp_Texture, bool pp_Offset, u32 pp_ShadInstr, Color base, Color textel, Color offset);
-typedef bool(*BlendingUnitFn)(bool pp_AlphaTest, u32 pp_SrcSel, u32 pp_DstSel, u32 pp_SrcInst, u32 pp_DstInst, Color* cb, Color col);
+struct refsw_impl
+{
+    // Used by layer peeling to determine end of processing
+    int PixelsDrawn;
+
+    u32 render_buffer[MAX_RENDER_PIXELS * 6]; //param pointers + depth1 + depth2 + stencil + acum 1 + acum 2
+
+    u8* vram;
+    refsw_impl(u8* vram) : vram(vram) {
+        
+    }
+
+	void DebugOnFrameStart(int numRender) {}
+	void DebugOnTileStart (int sX, int sY) {}
+
+    bool Init();
+    void ClearBuffers(u32 paramValue, float depthValue, u32 stencilValue);
+	void ClearParamBuffer(parameter_tag_t paramValue);
+    void PeelBuffers(float depthValue, u32 stencilValue);
+    void SummarizeStencilOr();
+	void SummarizeStencilAnd();
+    void ClearPixelsDrawn();
+    u32 GetPixelsDrawn();
+
+     // Render to ACCUM from TAG buffer
+    // TAG holds references to triangles, ACCUM is the tile framebuffer
+    void RenderParamTags(RenderMode rm, int tileX, int tileY);
+    void ClearFpuEntries();
+
+    f32 f16(u16 v);
+
+  //decode a vertex in the native pvr format
+    void decode_pvr_vertex(DrawParameters* params, pvr32addr_t ptr,Vertex* cv);
+    // decode an object (params + vertexes)
+    u32 decode_pvr_vetrices(DrawParameters* params, pvr32addr_t base, u32 skip, u32 shadow, Vertex* vtx, int count, int offset);
+
+    FpuEntry GetFpuEntry(taRECT *rect, RenderMode render_mode, ISP_BACKGND_T_type core_tag);
+    // Lookup/create cached TSP parameters, and call PixelFlush_tsp
+    bool PixelFlush_tsp(bool pp_AlphaTest, FpuEntry* entry, float x, float y, u8 *rb, float invW);
+    // Rasterize a single triangle to ISP (or ISP+TSP for PT)
+    void RasterizeTriangle(RenderMode render_mode, DrawParameters* params, parameter_tag_t tag, const Vertex& v1, const Vertex& v2, const Vertex& v3, const Vertex* v4, taRECT* area);
+    u8* GetColorOutputBuffer();
+    u8* DebugGetAllBuffers();
+
+    void operator delete(void* p);
+
+    // Implement the full texture/shade pipeline for a pixel
+    bool PixelFlush_tsp(
+		bool pp_UseAlpha, bool pp_Texture, bool pp_Offset, bool pp_ColorClamp, u32 pp_FogCtrl, bool pp_IgnoreAlpha, bool pp_ClampU, bool pp_ClampV, bool pp_FlipU, bool pp_FlipV, u32 pp_FilterMode, u32 pp_ShadInstr, bool pp_AlphaTest, u32 pp_SrcSel, u32 pp_DstSel, u32 pp_SrcInst, u32 pp_DstInst,
+		const FpuEntry *entry, float x, float y, float W, u8 *rb);
+
+    // Depth processing for a pixel -- render_mode 0: OPAQ, 1: PT, 2: TRANS
+    void PixelFlush_isp(RenderMode render_mode, u32 depth_mode, float x, float y, float invW, u8 *pb, parameter_tag_t tag);
+
+};
 
 // Used for deferred TSP processing lookups
 struct FpuEntry
@@ -143,8 +191,30 @@ struct FpuEntry
     // BlendingUnitFn blendingUnit;
 };
 
-struct refsw : RefRendInterface
+/*
+    Main renderer class
+*/
+struct refrend
 {
-    // Used by layer peeling to determine end of processing
-    int PixelsDrawn;
+    u8* vram;
+	refsw_impl* backEnd;
+    int numRenders = 0;
+
+    refrend(u8* vram, refsw_impl* backend);
+    void RenderTriangle(refsw_impl* backend, RenderMode render_mode, DrawParameters* params, parameter_tag_t tag, const Vertex& v1, const Vertex& v2, const Vertex& v3, const Vertex* v4, taRECT* area);
+    // called on vblank
+    bool RenderFramebuffer();
+    u32 ReadRegionArrayEntry(u32 base, RegionArrayEntry* entry);
+    f32 f16(u16 v);
+    void decode_pvr_vertex(DrawParameters* params, pvr32addr_t ptr,Vertex* cv);
+    u32 decode_pvr_vertices(DrawParameters* params, pvr32addr_t base, u32 skip, u32 shadow, Vertex* vtx, int count);
+    ISP_BACKGND_T_type CoreTagFromDesc(u32 cache_bypass, u32 shadow, u32 skip, u32 tag_address, u32 tag_offset);
+    void RenderTriangleStrip(refsw_impl* backend, RenderMode render_mode, ObjectListEntry obj, taRECT* rect);
+    void RenderTriangleArray(refsw_impl* backend, RenderMode render_mode, ObjectListEntry obj, taRECT* rect);
+    void RenderQuadArray(refsw_impl* backend, RenderMode render_mode, ObjectListEntry obj, taRECT* rect);
+    void RenderObjectList(refsw_impl* backend, RenderMode render_mode, pvr32addr_t base, taRECT* rect);
+    bool RenderPVR();
+    bool Init();
+    ~refrend();
+    void Present();
 };
