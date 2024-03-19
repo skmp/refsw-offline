@@ -7,7 +7,18 @@
 #pragma once
 
 #include "types.h"
-#include "oslib.h"
+
+
+u32 static bitscanrev(u32 v)
+{
+#if defined(__GNUC__)
+	return 31-__builtin_clz(v);
+#else
+	unsigned long rv;
+	_BitScanReverse(&rv,v);
+	return rv;
+#endif
+}
 
 extern u8* vq_codebook;
 extern u32 palette_index;

@@ -15,6 +15,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <cstring>
+#include <cassert>
 
 //includes from c++rt
 #include <vector>
@@ -48,8 +49,8 @@ using namespace std;
 #include "oslib.h"
 
 
-#define verify(x) if((x)==false){ printf("Verify Failed  : " #x "\n in %s -> %s : %d \n",(__FUNCTION__),(__FILE__),__LINE__); os_DebugBreak();}
-#define die(reason) { printf("Fatal error : %s\n in %s -> %s : %d \n",(reason),(__FUNCTION__),(__FILE__),__LINE__); os_DebugBreak();}
+#define verify(x) if((x)==false){ printf("Verify Failed  : " #x "\n in %s -> %s : %d \n",(__FUNCTION__),(__FILE__),__LINE__); assert(false);}
+#define die(reason) { printf("Fatal error : %s\n in %s -> %s : %d \n",(reason),(__FUNCTION__),(__FILE__),__LINE__); assert(false);}
 
 #define fverify verify
 

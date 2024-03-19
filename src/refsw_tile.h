@@ -111,19 +111,6 @@ union Color {
         u8 a;
     };
 };
-/*
-struct PixelPipeline {
-    // lookup tables
-
-//  virtual IspFn GetIsp(RenderMode render_mode, ISP_TSP isp)= 0;
-    virtual TspFn GetTsp(ISP_TSP isp, TSP tsp)= 0;
-    virtual TextureFetchFn GetTextureFetch(TSP tsp)= 0;
-    virtual ColorCombinerFn GetColorCombiner(ISP_TSP isp, TSP tsp)= 0;
-    virtual BlendingUnitFn GetBlendingUnit(RenderMode render_mode, TSP tsp) = 0;
-
-    virtual ~PixelPipeline() { }
-};
-*/
 
 struct refsw_impl
 {
@@ -193,10 +180,6 @@ struct FpuEntry
     IPs3 ips;
     DrawParameters params;
     text_info texture;
-    // TspFn tsp;
-    // TextureFetchFn textureFetch;
-    // ColorCombinerFn colorCombiner;
-    // BlendingUnitFn blendingUnit;
 };
 
 /*

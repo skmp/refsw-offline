@@ -7,13 +7,14 @@
 #pragma once
 #include "types.h"
 
-#define pvr_RegSize (0x8000)
+#define pvr_RegSize (0x2000)
 #define pvr_RegMask (pvr_RegSize-1)
 
 #define PvrReg(x,t) (*(t*)&pvr_regs[(x) & pvr_RegMask])
 
 extern u8 pvr_regs[pvr_RegSize];
 
+// Reg addresses
 #define ID_addr                 0x00000000 // R   Device ID
 #define REVISION_addr           0x00000004 // R   Revision number
 #define SOFTRESET_addr          0x00000008 // RW  CORE & TA software reset
@@ -79,6 +80,36 @@ extern u8 pvr_regs[pvr_RegSize];
 #define Y_COEFF_addr            0x00000118 // RW  Y scaling coefficient
 
 #define PT_ALPHA_REF_addr       0x0000011C // RW  Alpha value for Punch Through polygon comparison
+
+// TA REGS
+#define TA_OL_BASE_addr         0x00000124 // RW  Object list write start address
+#define TA_ISP_BASE_addr        0x00000128 // RW  ISP/TSP Parameter write start address
+#define TA_OL_LIMIT_addr        0x0000012C // RW  Start address of next Object Pointer Block
+#define TA_ISP_LIMIT_addr       0x00000130 // RW  Current ISP/TSP Parameter write address
+#define TA_NEXT_OPB_addr        0x00000134 // R   Global Tile clip control
+#define TA_ISP_CURRENT_addr     0x00000138 // R   Current ISP/TSP Parameter write address
+#define TA_GLOB_TILE_CLIP_addr  0x0000013C // RW  Global Tile clip control
+#define TA_ALLOC_CTRL_addr      0x00000140 // RW  Object list control
+#define TA_LIST_INIT_addr       0x00000144 // RW  TA initialization
+#define TA_YUV_TEX_BASE_addr    0x00000148 // RW  YUV422 texture write start address
+#define TA_YUV_TEX_CTRL_addr    0x0000014C // RW  YUV converter control
+#define TA_YUV_TEX_CNT_addr     0x00000150 // R   YUV converter macro block counter value
+
+#define TA_LIST_CONT_addr       0x00000160 // RW  TA continuation processing
+#define TA_NEXT_OPB_INIT_addr   0x00000164 // RW  Additional OPB starting address
+
+
+
+#define FOG_TABLE_START_addr        0x00000200 // RW  Look-up table Fog data
+#define FOG_TABLE_END_addr          0x000003FC
+
+#define TA_OL_POINTERS_START_addr   0x00000600 // R   TA object List Pointer data
+#define TA_OL_POINTERS_END_addr     0x00000F5C
+
+#define PALETTE_RAM_START_addr      0x00001000 // RW  Palette RAM
+#define PALETTE_RAM_END_addr        0x00001FFC
+
+// Reg types
 
 union FB_R_CTRL_type
 {
@@ -401,37 +432,8 @@ union TA_YUV_TEX_CTRL_type
 	u32 full;
 };
 
-// TA REGS
-#define TA_OL_BASE_addr         0x00000124 // RW  Object list write start address
-#define TA_ISP_BASE_addr        0x00000128 // RW  ISP/TSP Parameter write start address
-#define TA_OL_LIMIT_addr        0x0000012C // RW  Start address of next Object Pointer Block
-#define TA_ISP_LIMIT_addr       0x00000130 // RW  Current ISP/TSP Parameter write address
-#define TA_NEXT_OPB_addr        0x00000134 // R   Global Tile clip control
-#define TA_ISP_CURRENT_addr     0x00000138 // R   Current ISP/TSP Parameter write address
-#define TA_GLOB_TILE_CLIP_addr  0x0000013C // RW  Global Tile clip control
-#define TA_ALLOC_CTRL_addr      0x00000140 // RW  Object list control
-#define TA_LIST_INIT_addr       0x00000144 // RW  TA initialization
-#define TA_YUV_TEX_BASE_addr    0x00000148 // RW  YUV422 texture write start address
-#define TA_YUV_TEX_CTRL_addr    0x0000014C // RW  YUV converter control
-#define TA_YUV_TEX_CNT_addr     0x00000150 // R   YUV converter macro block counter value
 
-#define TA_LIST_CONT_addr       0x00000160 // RW  TA continuation processing
-#define TA_NEXT_OPB_INIT_addr   0x00000164 // RW  Additional OPB starting address
-
-
-
-#define FOG_TABLE_START_addr        0x00000200 // RW  Look-up table Fog data
-#define FOG_TABLE_END_addr          0x000003FC
-
-#define TA_OL_POINTERS_START_addr   0x00000600 // R   TA object List Pointer data
-#define TA_OL_POINTERS_END_addr     0x00000F5C
-
-#define PALETTE_RAM_START_addr      0x00001000 // RW  Palette RAM
-#define PALETTE_RAM_END_addr        0x00001FFC
-
-
-
-// Regs -- Start
+// Regs
 
 #define ID                PvrReg(ID_addr,u32)	         // R   Device ID
 #define REVISION          PvrReg(REVISION_addr,u32)      // R   Revision number
@@ -522,7 +524,3 @@ union TA_YUV_TEX_CTRL_type
 #define FOG_TABLE        (&PvrReg(FOG_TABLE_START_addr,u32))      // RW Look-up table Fog data
 #define TA_OL_POINTERS   (&PvrReg(TA_OL_POINTERS_START_addr),u32) // R  TA object List Pointer data
 #define PALETTE_RAM      (&PvrReg(PALETTE_RAM_START_addr,u32))    // RW Palette RAM
-
-
-#define TA_CURRENT_CTX (TA_ISP_BASE & 0xF00000)
-#define CORE_CURRENT_CTX (PARAM_BASE & 0xF00000)

@@ -10,7 +10,7 @@ g++ \
         src/pvr_mem.cpp \
         src/TexCache.cpp \
         src/TexCacheEntry.cpp \
-    -DTARGET_LINUX_x64 -DREFSW_OFFLINE -DFEAT_HAS_SOFTREND -DFEAT_TA=0x60000002 \
+    -DTARGET_LINUX_x64 -DREFSW_OFFLINE -DFEAT_TA=0x60000002 \
     -lpng -lz \
     -g -O0 \
     -o refsw-offline \
