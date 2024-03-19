@@ -53,7 +53,7 @@ u32 twiddle_slow(u32 x,u32 y,u32 x_sz,u32 y_sz)
 	return rv;
 }
 
-static void BuildTables()
+void BuildTwiddleTables()
 {
 	for (u32 s=0;s<8;s++)
 	{
@@ -79,8 +79,6 @@ static void BuildTables()
 		decoded_colors[2][c] = (REP_16((c >> 0) % 16) << 24) | (REP_16((c >> 12) % 16) << 16) | (REP_16((c >> 8) % 16) << 8) | (REP_16((c >> 4) % 16) << 0);
 	}
 }
-
-static OnLoad btt(&BuildTables);
 
 void palette_update()
 {

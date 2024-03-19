@@ -16,8 +16,6 @@
 using namespace std;
 using namespace std::filesystem;
 
-settings_t settings;
-
 u8 vram[VRAM_SIZE];
 
 int main(int argc, char **argv)
@@ -65,6 +63,8 @@ int main(int argc, char **argv)
 
     printf("Rendering ...\n");
 
+    BuildTwiddleTables();
+    
     refrend* rend = new refrend(vram, new refsw_impl(vram));
 
     rend->Init();

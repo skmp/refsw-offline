@@ -19,3 +19,5 @@ struct text_info {
 text_info raw_GetTexture(u8* vram, TSP tsp, TCW tcw);
 
 void palette_update();
+
+void BuildTwiddleTables();
