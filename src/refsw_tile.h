@@ -129,6 +129,7 @@ struct refsw_impl
     int PixelsDrawn;
 
     u32 render_buffer[MAX_RENDER_PIXELS * 6]; //param pointers + depth1 + depth2 + stencil + acum 1 + acum 2
+	parameter_tag_t tagBuffer[MAX_RENDER_PIXELS];
 
     u8* vram;
     refsw_impl(u8* vram) : vram(vram) {
