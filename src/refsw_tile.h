@@ -155,8 +155,6 @@ void RasterizeTriangle(RenderMode render_mode, DrawParameters* params, parameter
 u8* GetColorOutputBuffer();
 u8* DebugGetAllBuffers();
 
-void operator delete(void* p);
-
 // Implement the full texture/shade pipeline for a pixel
 bool PixelFlush_tsp(
     bool pp_UseAlpha, bool pp_Texture, bool pp_Offset, bool pp_ColorClamp, u32 pp_FogCtrl, bool pp_IgnoreAlpha, bool pp_ClampU, bool pp_ClampV, bool pp_FlipU, bool pp_FlipV, u32 pp_FilterMode, u32 pp_ShadInstr, bool pp_AlphaTest, u32 pp_SrcSel, u32 pp_DstSel, u32 pp_SrcInst, u32 pp_DstInst,
@@ -164,7 +162,6 @@ bool PixelFlush_tsp(
 
 // Depth processing for a pixel -- render_mode 0: OPAQ, 1: PT, 2: TRANS
 void PixelFlush_isp(RenderMode render_mode, u32 depth_mode, int pixIdx, float x, float y, float invW, u8 *pb, ZType* zb, parameter_tag_t tag);
-
 
 
 /*

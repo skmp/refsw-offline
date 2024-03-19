@@ -385,10 +385,6 @@ u8* DebugGetAllBuffers() {
     return reinterpret_cast<u8*>(render_buffer);
 }
 
-void operator delete(void* p) {
-    free(p);
-}
-
 
 // Clamp and flip a texture coordinate
 static int ClampFlip( bool pp_Clamp, bool pp_Flip
