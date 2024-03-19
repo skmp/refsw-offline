@@ -6,7 +6,7 @@
 
 #include <functional>
 #include "core_structs.h" // for ISP_TSP and co
-#include "refsw_lists_regs.h"
+#include "refsw_lists_regtypes.h"
 
 struct RegionArrayEntry {
     RegionArrayEntryControl control;
