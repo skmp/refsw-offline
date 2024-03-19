@@ -331,6 +331,7 @@ void refsw_impl::RasterizeTriangle(RenderMode render_mode, DrawParameters* param
     //auto pixelFlush = pixelPipeline->GetIsp(render_mode, params->isp);
 
     // Loop through pixels
+	int pixidx = 0;
     for (int y = spany; y > 0; y -= 1)
     {
         u8* cb_x = cb_y;
@@ -347,9 +348,10 @@ void refsw_impl::RasterizeTriangle(RenderMode render_mode, DrawParameters* param
             if (inTriangle)
             {
                 float invW = Z.Ip(x_ps, y_ps);
-                PixelFlush_isp(render_mode, params->isp.DepthMode, x_ps, y_ps, invW, cb_x, tag);
+                PixelFlush_isp(render_mode, params->isp.DepthMode, pixidx, x_ps, y_ps, invW, cb_x, tag);
             }
 
+			pixidx++;
             cb_x += 4;
             x_ps = x_ps + 1;
         }
@@ -742,7 +744,7 @@ bool refsw_impl::PixelFlush_tsp(
 }
 
 // Depth processing for a pixel -- render_mode 0: OPAQ, 1: PT, 2: TRANS
-void refsw_impl::PixelFlush_isp(RenderMode render_mode, u32 depth_mode, float x, float y, float invW, u8 *pb, parameter_tag_t tag)
+void refsw_impl::PixelFlush_isp(RenderMode render_mode, u32 depth_mode, int pixIdx, float x, float y, float invW, u8 *pb, parameter_tag_t tag)
 {
     auto zb = (float*)&pb [DEPTH1_BUFFER_PIXEL_OFFSET * 4];
     auto zb2 = (float*)&pb[DEPTH2_BUFFER_PIXEL_OFFSET * 4];

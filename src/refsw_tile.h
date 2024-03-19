@@ -27,7 +27,9 @@
 #define ACCUM1_BUFFER_PIXEL_OFFSET  (MAX_RENDER_PIXELS*4)
 #define ACCUM2_BUFFER_PIXEL_OFFSET  (MAX_RENDER_PIXELS*5)
 
-typedef float ZType;
+typedef float    ZType;
+typedef u8       StencilType;
+typedef u32      ColorType;
 /*
     Surface equation solver
 */
@@ -129,7 +131,13 @@ struct refsw_impl
     int PixelsDrawn;
 
     u32 render_buffer[MAX_RENDER_PIXELS * 6]; //param pointers + depth1 + depth2 + stencil + acum 1 + acum 2
-	parameter_tag_t tagBuffer[MAX_RENDER_PIXELS];
+
+	parameter_tag_t tagBuffer    [MAX_RENDER_PIXELS];
+	StencilType     stencilBuffer[MAX_RENDER_PIXELS];
+	u32             colorBuffer1 [MAX_RENDER_PIXELS];
+	u32             colorBuffer2 [MAX_RENDER_PIXELS];
+	ZType           depthBuffer1 [MAX_RENDER_PIXELS];
+	ZType           depthBuffer2 [MAX_RENDER_PIXELS];
 
     u8* vram;
     refsw_impl(u8* vram) : vram(vram) {
@@ -176,8 +184,7 @@ struct refsw_impl
 		const FpuEntry *entry, float x, float y, float W, u8 *rb);
 
     // Depth processing for a pixel -- render_mode 0: OPAQ, 1: PT, 2: TRANS
-    void PixelFlush_isp(RenderMode render_mode, u32 depth_mode, float x, float y, float invW, u8 *pb, parameter_tag_t tag);
-
+    void PixelFlush_isp(RenderMode render_mode, u32 depth_mode, int pixIdx, float x, float y, float invW, u8 *pb, parameter_tag_t tag);
 };
 
 // Used for deferred TSP processing lookups
