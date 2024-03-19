@@ -16,8 +16,6 @@
 using namespace std;
 using namespace std::filesystem;
 
-u8 vram[VRAM_SIZE];
-
 int main(int argc, char **argv)
 {
     if (argc != 3)
@@ -44,7 +42,7 @@ int main(int argc, char **argv)
         }
         for (size_t i = 0; i < VRAM_SIZE; i+= 4)
         {
-            auto v = vrp(vram, i);
+            auto v = vrp(i);
             fread(v, sizeof(*v), 1, v0);
         }
         fclose(v0);
@@ -64,16 +62,12 @@ int main(int argc, char **argv)
     printf("Rendering ...\n");
 
     BuildTwiddleTables();
-    
-    refrend* rend = new refrend(vram, new refsw_impl(vram));
 
-    rend->Init();
-
-    rend->RenderPVR();
+    RenderPVR();
 
     printf("Hackpresenting ...\n");
 
-    rend->RenderFramebuffer();
+    RenderFramebuffer();
 
     return 0;
 }

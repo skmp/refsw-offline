@@ -50,7 +50,6 @@ struct TextureCacheData
 {
 	TSP tsp;        //dreamcast texture parameters
 	TCW tcw;
-	u8* vram;
 	
 	u16* pData;
 	int tex_type;
@@ -331,7 +330,7 @@ bool TextureCacheData::Delete()
 map<u64,TextureCacheData> TexCache;
 typedef map<u64,TextureCacheData>::iterator TexCacheIter;
 
-TextureCacheData *getTextureCacheData(u8* vram, TSP tsp, TCW tcw);
+TextureCacheData *getTextureCacheData(TSP tsp, TCW tcw);
 
 
 //static float LastTexCacheStats;
@@ -342,7 +341,7 @@ const TSP TSPTextureCacheMask = { { 7, 7 } };
 //     TexAddr : 0x1FFFFF, Reserved : 0, StrideSel : 0, ScanOrder : 1, PixelFmt : 7, VQ_Comp : 1, MipMapped : 1
 const TCW TCWTextureCacheMask = { { 0x1FFFFF, 0, 0, 1, 7, 1, 1 } };
 
-TextureCacheData *getTextureCacheData(u8* vram, TSP tsp, TCW tcw) {
+TextureCacheData *getTextureCacheData(TSP tsp, TCW tcw) {
 	u64 key = tsp.full & TSPTextureCacheMask.full;
 	if (tcw.PixelFmt == PixelPal4 || tcw.PixelFmt == PixelPal8)
 		// Paletted textures have a palette selection that must be part of the key
@@ -362,27 +361,22 @@ TextureCacheData *getTextureCacheData(u8* vram, TSP tsp, TCW tcw) {
 		// Needed if the texture is updated
 		tf->tcw.StrideSel = tcw.StrideSel;
 	}
-	else if (vram) //create if not existing
+	else
 	{
 		tf=&TexCache[key];
 
 		tf->tsp = tsp;
 		tf->tcw = tcw;
-		tf->vram = vram;
-	}
-	else
-	{
-		tf = nullptr;
 	}
 
 	return tf;
 }
 
-text_info raw_GetTexture(u8* vram, TSP tsp, TCW tcw)
+text_info raw_GetTexture(TSP tsp, TCW tcw)
 {
 	text_info rv = { 0 };
 
-	TextureCacheData* tf = getTextureCacheData(vram, tsp, tcw);
+	TextureCacheData* tf = getTextureCacheData(tsp, tcw);
 
 	if (!tf)
 		return rv;

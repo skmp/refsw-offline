@@ -15,6 +15,14 @@
 #include "build.h"
 #include "refsw_tile.h"
 
+u32 render_buffer[MAX_RENDER_PIXELS * 6]; //param pointers + depth1 + depth2 + stencil + acum 1 + acum 2
+parameter_tag_t tagBuffer    [MAX_RENDER_PIXELS];
+StencilType     stencilBuffer[MAX_RENDER_PIXELS];
+u32             colorBuffer1 [MAX_RENDER_PIXELS];
+u32             colorBuffer2 [MAX_RENDER_PIXELS];
+ZType           depthBuffer1 [MAX_RENDER_PIXELS];
+ZType           depthBuffer2 [MAX_RENDER_PIXELS];
+
 union mem128i {
     uint8_t m128i_u8[16];
     int8_t m128i_i8[16];
@@ -37,11 +45,7 @@ static float mmax(float a, float b, float c, float d)
     return min(d, rv);
 }
 
-bool refsw_impl::Init() {
-    return true;
-}
-
-void refsw_impl::ClearBuffers(u32 paramValue, float depthValue, u32 stencilValue)
+void ClearBuffers(u32 paramValue, float depthValue, u32 stencilValue)
 {
     auto zb = depthBuffer1;
     auto stencil = reinterpret_cast<u32*>(render_buffer + STENCIL_BUFFER_PIXEL_OFFSET);
@@ -54,7 +58,7 @@ void refsw_impl::ClearBuffers(u32 paramValue, float depthValue, u32 stencilValue
     }
 }
 
-void refsw_impl::ClearParamBuffer(parameter_tag_t paramValue) {
+void ClearParamBuffer(parameter_tag_t paramValue) {
     auto pb = reinterpret_cast<parameter_tag_t*>(render_buffer + PARAM_BUFFER_PIXEL_OFFSET);
 
     for (int i = 0; i < MAX_RENDER_PIXELS; i++) {
@@ -62,7 +66,7 @@ void refsw_impl::ClearParamBuffer(parameter_tag_t paramValue) {
     }
 }
 
-void refsw_impl::PeelBuffers(float depthValue, u32 stencilValue)
+void PeelBuffers(float depthValue, u32 stencilValue)
 {
     auto zb = depthBuffer1;
     auto zb2 = reinterpret_cast<float*>(render_buffer + DEPTH2_BUFFER_PIXEL_OFFSET);
@@ -75,7 +79,7 @@ void refsw_impl::PeelBuffers(float depthValue, u32 stencilValue)
     }
 }
 
-void refsw_impl::SummarizeStencilOr() {
+void SummarizeStencilOr() {
     auto stencil = reinterpret_cast<u32*>(render_buffer + STENCIL_BUFFER_PIXEL_OFFSET);
 
     // post movdol merge INSIDE
@@ -84,7 +88,7 @@ void refsw_impl::SummarizeStencilOr() {
     }
 }
 
-void refsw_impl::SummarizeStencilAnd() {
+void SummarizeStencilAnd() {
     auto stencil = reinterpret_cast<u32*>(render_buffer + STENCIL_BUFFER_PIXEL_OFFSET);
 
     // post movdol merge OUTSIDE
@@ -93,19 +97,20 @@ void refsw_impl::SummarizeStencilAnd() {
     }
 }
 
-void refsw_impl::ClearPixelsDrawn()
+int PixelsDrawn;
+void ClearPixelsDrawn()
 {
     PixelsDrawn = 0;
 }
 
-u32 refsw_impl::GetPixelsDrawn()
+u32 GetPixelsDrawn()
 {
     return PixelsDrawn;
 }
 
     // Render to ACCUM from TAG buffer
 // TAG holds references to triangles, ACCUM is the tile framebuffer
-void refsw_impl::RenderParamTags(RenderMode rm, int tileX, int tileY) {
+void RenderParamTags(RenderMode rm, int tileX, int tileY) {
 
     auto rb = render_buffer;
 	auto dz = depthBuffer1;
@@ -131,11 +136,11 @@ void refsw_impl::RenderParamTags(RenderMode rm, int tileX, int tileY) {
     }
 }
 
-void refsw_impl::ClearFpuEntries() {
+void ClearFpuEntries() {
 
 }
 
-f32 refsw_impl::f16(u16 v)
+f32 f16(u16 v)
 {
     u32 z=v<<16;
     return *(f32*)&z;
@@ -151,7 +156,7 @@ f32 refsw_impl::f16(u16 v)
 	}
 
 //decode a vertex in the native pvr format
-void refsw_impl::decode_pvr_vertex(DrawParameters* params, pvr32addr_t ptr,Vertex* cv)
+void decode_pvr_vertex(DrawParameters* params, pvr32addr_t ptr,Vertex* cv)
 {
     //XYZ
     //UV
@@ -159,39 +164,39 @@ void refsw_impl::decode_pvr_vertex(DrawParameters* params, pvr32addr_t ptr,Verte
     //Offset Col
 
     //XYZ are _allways_ there :)
-    cv->x=vrf(vram, ptr);ptr+=4;
-    cv->y=vrf(vram, ptr);ptr+=4;
-    cv->z=vrf(vram, ptr);ptr+=4;
+    cv->x=vrf(ptr);ptr+=4;
+    cv->y=vrf(ptr);ptr+=4;
+    cv->z=vrf(ptr);ptr+=4;
 
     if (params->isp.Texture)
     {	//Do texture , if any
         if (params->isp.UV_16b)
         {
-            u32 uv=vri(vram, ptr);
+            u32 uv=vri(ptr);
             cv->u = f16((u16)(uv >>16));
             cv->v = f16((u16)(uv >> 0));
             ptr+=4;
         }
         else
         {
-            cv->u=vrf(vram, ptr);ptr+=4;
-            cv->v=vrf(vram, ptr);ptr+=4;
+            cv->u=vrf(ptr);ptr+=4;
+            cv->v=vrf(ptr);ptr+=4;
         }
     }
 
     //Color
-    u32 col=vri(vram, ptr);ptr+=4;
+    u32 col=vri(ptr);ptr+=4;
     vert_packed_color_(cv->col,col);
     if (params->isp.Offset)
     {
         //Intensity color
-        u32 col=vri(vram, ptr);ptr+=4;
+        u32 col=vri(ptr);ptr+=4;
         vert_packed_color_(cv->spc,col);
     }
 }
 
 // decode an object (params + vertexes)
-u32 refsw_impl::decode_pvr_vetrices(DrawParameters* params, pvr32addr_t base, u32 skip, u32 shadow, Vertex* vtx, int count, int offset)
+u32 decode_pvr_vetrices(DrawParameters* params, pvr32addr_t base, u32 skip, u32 shadow, Vertex* vtx, int count, int offset)
 {
     bool PSVM=FPU_SHAD_SCALE.intensity_shadow == 0;
 
@@ -199,14 +204,14 @@ u32 refsw_impl::decode_pvr_vetrices(DrawParameters* params, pvr32addr_t base, u3
         shadow = 0; // no double volume stuff
     }
 
-    params->isp.full=vri(vram, base);
-    params->tsp.full=vri(vram, base+4);
-    params->tcw.full=vri(vram, base+8);
+    params->isp.full=vri(base);
+    params->tsp.full=vri(base+4);
+    params->tcw.full=vri(base+8);
 
     base += 12;
     if (shadow) {
-        params->tsp2.full=vri(vram, base+0);
-        params->tcw2.full=vri(vram, base+4);
+        params->tsp2.full=vri(base+0);
+        params->tcw2.full=vri(base+4);
         base += 8;
     }
 
@@ -222,7 +227,7 @@ u32 refsw_impl::decode_pvr_vetrices(DrawParameters* params, pvr32addr_t base, u3
     return base;
 }
 
-FpuEntry refsw_impl::GetFpuEntry(taRECT *rect, RenderMode render_mode, ISP_BACKGND_T_type core_tag)
+FpuEntry GetFpuEntry(taRECT *rect, RenderMode render_mode, ISP_BACKGND_T_type core_tag)
 {
     FpuEntry entry;
     Vertex vtx[3];
@@ -230,7 +235,7 @@ FpuEntry refsw_impl::GetFpuEntry(taRECT *rect, RenderMode render_mode, ISP_BACKG
     // generate
     if (entry.params.isp.Texture)
     {
-        entry.texture = raw_GetTexture(vram, entry.params.tsp, entry.params.tcw);
+        entry.texture = raw_GetTexture(entry.params.tsp, entry.params.tcw);
     }
 
     entry.ips.Setup(rect, &entry.params, &entry.texture, vtx[0], vtx[1], vtx[2]);
@@ -239,7 +244,7 @@ FpuEntry refsw_impl::GetFpuEntry(taRECT *rect, RenderMode render_mode, ISP_BACKG
 }
 
 // Lookup/create cached TSP parameters, and call PixelFlush_tsp
-bool refsw_impl::PixelFlush_tsp(bool pp_AlphaTest, FpuEntry* entry, float x, float y, u8 *rb, float invW)
+bool PixelFlush_tsp(bool pp_AlphaTest, FpuEntry* entry, float x, float y, u8 *rb, float invW)
 {   
     return PixelFlush_tsp(entry->params.tsp.UseAlpha, entry->params.isp.Texture, entry->params.isp.Offset, entry->params.tsp.ColorClamp, entry->params.tsp.FogCtrl,
                                         entry->params.tsp.IgnoreTexA, entry->params.tsp.ClampU, entry->params.tsp.ClampV, entry->params.tsp.FlipU,  entry->params.tsp.FlipV,  entry->params.tsp.FilterMode,  entry->params.tsp.ShadInstr,  
@@ -248,7 +253,7 @@ bool refsw_impl::PixelFlush_tsp(bool pp_AlphaTest, FpuEntry* entry, float x, flo
 }
 
 // Rasterize a single triangle to ISP (or ISP+TSP for PT)
-void refsw_impl::RasterizeTriangle(RenderMode render_mode, DrawParameters* params, parameter_tag_t tag, const Vertex& v1, const Vertex& v2, const Vertex& v3, const Vertex* v4, taRECT* area)
+void RasterizeTriangle(RenderMode render_mode, DrawParameters* params, parameter_tag_t tag, const Vertex& v1, const Vertex& v2, const Vertex& v3, const Vertex* v4, taRECT* area)
 {
     const int stride_bytes = STRIDE_PIXEL_OFFSET * 4;
     //Plane equation
@@ -372,15 +377,15 @@ void refsw_impl::RasterizeTriangle(RenderMode render_mode, DrawParameters* param
     }
 }
     
-u8* refsw_impl::GetColorOutputBuffer() {
+u8* GetColorOutputBuffer() {
     return reinterpret_cast<u8*>(render_buffer + ACCUM1_BUFFER_PIXEL_OFFSET);
 }
 
-u8* refsw_impl::DebugGetAllBuffers() {
+u8* DebugGetAllBuffers() {
     return reinterpret_cast<u8*>(render_buffer);
 }
 
-void refsw_impl::operator delete(void* p) {
+void operator delete(void* p) {
     free(p);
 }
 
@@ -720,7 +725,7 @@ static Color FogUnit(bool pp_Offset, bool pp_ColorClamp, u32 pp_FogCtrl, Color c
 }
 
 // Implement the full texture/shade pipeline for a pixel
-bool refsw_impl::PixelFlush_tsp(
+bool PixelFlush_tsp(
 	bool pp_UseAlpha, bool pp_Texture, bool pp_Offset, bool pp_ColorClamp, u32 pp_FogCtrl, bool pp_IgnoreAlpha, bool pp_ClampU, bool pp_ClampV, bool pp_FlipU, bool pp_FlipV, u32 pp_FilterMode, u32 pp_ShadInstr, bool pp_AlphaTest, u32 pp_SrcSel, u32 pp_DstSel, u32 pp_SrcInst, u32 pp_DstInst,
 	const FpuEntry *entry, float x, float y, float W, u8 *rb)
 {
@@ -752,7 +757,7 @@ bool refsw_impl::PixelFlush_tsp(
 }
 
 // Depth processing for a pixel -- render_mode 0: OPAQ, 1: PT, 2: TRANS
-void refsw_impl::PixelFlush_isp(RenderMode render_mode, u32 depth_mode, int pixIdx, float x, float y, float invW, u8 *pb, ZType* zb, parameter_tag_t tag)
+void PixelFlush_isp(RenderMode render_mode, u32 depth_mode, int pixIdx, float x, float y, float invW, u8 *pb, ZType* zb, parameter_tag_t tag)
 {
     auto zb2 = (float*)&pb[DEPTH2_BUFFER_PIXEL_OFFSET * 4];
     auto stencil = (u32*)&pb[STENCIL_BUFFER_PIXEL_OFFSET * 4];
@@ -810,7 +815,7 @@ void refsw_impl::PixelFlush_isp(RenderMode render_mode, u32 depth_mode, int pixI
         {
             // Z + TSP syncronized for alpha test
             // TODO: Implement layer peeling front-to-back here
-            //if (AlphaTest_tsp(backend, x, y, pb, invW, tag))
+            //if (AlphaTest_tsp(x, y, pb, invW, tag))
             {
                 *zb = invW;
                 *(parameter_tag_t *)pb = tag;
@@ -847,8 +852,4 @@ void refsw_impl::PixelFlush_isp(RenderMode render_mode, u32 depth_mode, int pixI
         }
         break;
     }
-}
-
-refsw_impl* rend_refsw(u8* vram) {
-	return new refsw_impl(vram);
 }

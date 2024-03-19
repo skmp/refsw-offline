@@ -6,35 +6,31 @@
 #include "types.h"
 #include "pvr_mem.h"
 
+u8 vram[VRAM_SIZE];
+
 //Regs
 
 //vram 32-64b
 
 //read
 
-u16 pvr_read_area1_16(void* ctx, u32 addr)
+u16 pvr_read_area1_16(u32 addr)
 {
-	auto vram = reinterpret_cast<u8*>(ctx);
-
 	return *(u16*)&vram[pvr_map32(addr)];
 }
-u32 pvr_read_area1_32(void* ctx, u32 addr)
+u32 pvr_read_area1_32(u32 addr)
 {
-	auto vram = reinterpret_cast<u8*>(ctx);
-
 	return *(u32*)&vram[pvr_map32(addr)];
 }
 
 //write
 
-void pvr_write_area1_16(void* ctx, u32 addr,u16 data)
+void pvr_write_area1_16(u32 addr,u16 data)
 {
-	auto vram = reinterpret_cast<u8*>(ctx);
 	*(u16*)&vram[pvr_map32(addr)]=data;
 }
-void pvr_write_area1_32(void* ctx, u32 addr,u32 data)
+void pvr_write_area1_32(u32 addr,u32 data)
 {
-	auto vram = reinterpret_cast<u8*>(ctx);
 	*(u32*)&vram[pvr_map32(addr)] = data;
 }
 
@@ -59,16 +55,16 @@ u32 pvr_map32(u32 offset32)
 }
 
 
-f32 vrf(u8* vram, u32 addr)
+f32 vrf(u32 addr)
 {
 	return *(f32*)&vram[pvr_map32(addr)];
 }
-u32 vri(u8* vram, u32 addr)
+u32 vri(u32 addr)
 {
 	return *(u32*)&vram[pvr_map32(addr)];
 }
 
-u32* vrp(u8* vram, u32 addr)
+u32* vrp(u32 addr)
 {
 	return (u32*)&vram[pvr_map32(addr)];
 }

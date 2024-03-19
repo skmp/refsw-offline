@@ -85,44 +85,40 @@
 /*
     Main renderer class
 */
-refrend::refrend(u8* vram, refsw_impl* backend) : vram(vram) {
-    backend->Init();
-	backEnd = backend;
-}
 
-void refrend::RenderTriangle(refsw_impl* backend, RenderMode render_mode, DrawParameters* params, parameter_tag_t tag, const Vertex& v1, const Vertex& v2, const Vertex& v3, const Vertex* v4, taRECT* area)
+void RenderTriangle(RenderMode render_mode, DrawParameters* params, parameter_tag_t tag, const Vertex& v1, const Vertex& v2, const Vertex& v3, const Vertex* v4, taRECT* area)
 {
-    backend->RasterizeTriangle(render_mode, params, tag, v1, v2, v3, v4, area);
+    RasterizeTriangle(render_mode, params, tag, v1, v2, v3, v4, area);
 
     if (render_mode == RM_MODIFIER)
     {
         // 0 normal polygon, 1 inside last, 2 outside last
         if (params->isp.modvol.VolumeMode == 1 ) 
         {
-            backend->SummarizeStencilOr();
+            SummarizeStencilOr();
         }
         else if (params->isp.modvol.VolumeMode == 2) 
         {
-            backend->SummarizeStencilAnd();
+            SummarizeStencilAnd();
         }
     }
 }
 
 // called on vblank
-bool refrend::RenderFramebuffer() {
+bool RenderFramebuffer() {
     Present();
     return false;
 }
 
-u32 refrend::ReadRegionArrayEntry(u32 base, RegionArrayEntry* entry) 
+u32 ReadRegionArrayEntry(u32 base, RegionArrayEntry* entry) 
 {
     bool fmt_v1 = (((FPU_PARAM_CFG >> 21) & 1) == 0);
 
-    entry->control.full     = vri(vram, base);
-    entry->opaque.full      = vri(vram, base + 4);
-    entry->opaque_mod.full  = vri(vram, base + 8);
-    entry->trans.full       = vri(vram, base + 12);
-    entry->trans_mod.full   = vri(vram, base + 16);
+    entry->control.full     = vri(base);
+    entry->opaque.full      = vri(base + 4);
+    entry->opaque_mod.full  = vri(base + 8);
+    entry->trans.full       = vri(base + 12);
+    entry->trans_mod.full   = vri(base + 16);
 
     if (fmt_v1)
     {
@@ -131,15 +127,9 @@ u32 refrend::ReadRegionArrayEntry(u32 base, RegionArrayEntry* entry)
     }
     else
     {
-        entry->puncht.full = vri(vram, base + 20);
+        entry->puncht.full = vri(base + 20);
         return 6 * 4;
     }
-}
-
-f32 refrend::f16(u16 v)
-{
-    u32 z=v<<16;
-    return *(f32*)&z;
 }
 
 #define vert_packed_color_(to,src) \
@@ -151,48 +141,9 @@ f32 refrend::f16(u16 v)
 	to[3] = (u8)(t);      \
 	}
 
-//decode a vertex in the native pvr format
-void refrend::decode_pvr_vertex(DrawParameters* params, pvr32addr_t ptr,Vertex* cv)
-{
-    //XYZ
-    //UV
-    //Base Col
-    //Offset Col
-
-    //XYZ are _allways_ there :)
-    cv->x=vrf(vram, ptr);ptr+=4;
-    cv->y=vrf(vram, ptr);ptr+=4;
-    cv->z=vrf(vram, ptr);ptr+=4;
-
-    if (params->isp.Texture)
-    {	//Do texture , if any
-        if (params->isp.UV_16b)
-        {
-            u32 uv=vri(vram, ptr);
-            cv->u = f16((u16)(uv >>16));
-            cv->v = f16((u16)(uv >> 0));
-            ptr+=4;
-        }
-        else
-        {
-            cv->u=vrf(vram, ptr);ptr+=4;
-            cv->v=vrf(vram, ptr);ptr+=4;
-        }
-    }
-
-    //Color
-    u32 col=vri(vram, ptr);ptr+=4;
-    vert_packed_color_(cv->col,col);
-    if (params->isp.Offset)
-    {
-        //Intensity color
-        u32 col=vri(vram, ptr);ptr+=4;
-        vert_packed_color_(cv->spc,col);
-    }
-}
 
 // decode an object (params + vertexes)
-u32 refrend::decode_pvr_vertices(DrawParameters* params, pvr32addr_t base, u32 skip, u32 shadow, Vertex* vtx, int count)
+u32 decode_pvr_vertices(DrawParameters* params, pvr32addr_t base, u32 skip, u32 shadow, Vertex* vtx, int count)
 {
     bool PSVM=FPU_SHAD_SCALE.intensity_shadow == 0;
 
@@ -200,14 +151,14 @@ u32 refrend::decode_pvr_vertices(DrawParameters* params, pvr32addr_t base, u32 s
         shadow = 0; // no double volume stuff
     }
 
-    params->isp.full=vri(vram, base);
-    params->tsp.full=vri(vram, base+4);
-    params->tcw.full=vri(vram, base+8);
+    params->isp.full=vri(base);
+    params->tsp.full=vri(base+4);
+    params->tcw.full=vri(base+8);
 
     base += 12;
     if (shadow) {
-        params->tsp2.full=vri(vram, base+0);
-        params->tcw2.full=vri(vram, base+4);
+        params->tsp2.full=vri(base+0);
+        params->tcw2.full=vri(base+4);
         base += 8;
     }
 
@@ -219,7 +170,7 @@ u32 refrend::decode_pvr_vertices(DrawParameters* params, pvr32addr_t base, u32 s
     return base;
 }
 
-ISP_BACKGND_T_type refrend::CoreTagFromDesc(u32 cache_bypass, u32 shadow, u32 skip, u32 tag_address, u32 tag_offset) {
+ISP_BACKGND_T_type CoreTagFromDesc(u32 cache_bypass, u32 shadow, u32 skip, u32 tag_address, u32 tag_offset) {
     ISP_BACKGND_T_type rv;
         
     rv.cache_bypass = cache_bypass;
@@ -232,7 +183,7 @@ ISP_BACKGND_T_type refrend::CoreTagFromDesc(u32 cache_bypass, u32 shadow, u32 sk
 }
 
 // render a triangle strip object list entry
-void refrend::RenderTriangleStrip(refsw_impl* backend, RenderMode render_mode, ObjectListEntry obj, taRECT* rect)
+void RenderTriangleStrip(RenderMode render_mode, ObjectListEntry obj, taRECT* rect)
 {
     Vertex vtx[8];
     DrawParameters params;
@@ -253,14 +204,14 @@ void refrend::RenderTriangleStrip(refsw_impl* backend, RenderMode render_mode, O
             int not_even = i&1;
             int even = not_even ^ 1;
 
-            RenderTriangle(backend, render_mode, &params, tag, vtx[i+not_even], vtx[i+even], vtx[i+2], nullptr, rect);
+            RenderTriangle(render_mode, &params, tag, vtx[i+not_even], vtx[i+even], vtx[i+2], nullptr, rect);
         }
     }
 }
 
 
 // render a triangle array object list entry
-void refrend::RenderTriangleArray(refsw_impl* backend, RenderMode render_mode, ObjectListEntry obj, taRECT* rect)
+void RenderTriangleArray(RenderMode render_mode, ObjectListEntry obj, taRECT* rect)
 {
     auto triangles = obj.tarray.prims + 1;
     u32 param_base = PARAM_BASE & 0xF00000;
@@ -278,12 +229,12 @@ void refrend::RenderTriangleArray(refsw_impl* backend, RenderMode render_mode, O
             
         parameter_tag_t tag  = CoreTagFromDesc(params.isp.CacheBypass, obj.tstrip.shadow, obj.tstrip.skip, (tag_address - param_base)/4, 0).full;
 
-        RenderTriangle(backend, render_mode, &params, tag, vtx[0], vtx[1], vtx[2], nullptr, rect);
+        RenderTriangle(render_mode, &params, tag, vtx[0], vtx[1], vtx[2], nullptr, rect);
     }
 }
 
 // render a quad array object list entry
-void refrend::RenderQuadArray(refsw_impl* backend, RenderMode render_mode, ObjectListEntry obj, taRECT* rect)
+void RenderQuadArray(RenderMode render_mode, ObjectListEntry obj, taRECT* rect)
 {
     auto quads = obj.qarray.prims + 1;
     u32 param_base = PARAM_BASE & 0xF00000;
@@ -302,21 +253,21 @@ void refrend::RenderQuadArray(refsw_impl* backend, RenderMode render_mode, Objec
         parameter_tag_t tag = CoreTagFromDesc(params.isp.CacheBypass, obj.qarray.shadow, obj.qarray.skip, (tag_address - param_base)/4, 0).full;
 
         //TODO: FIXME
-        RenderTriangle(backend, render_mode, &params, tag, vtx[0], vtx[1], vtx[2], &vtx[3], rect);
+        RenderTriangle(render_mode, &params, tag, vtx[0], vtx[1], vtx[2], &vtx[3], rect);
     }
 }
 
 // Render an object list
-void refrend::RenderObjectList(refsw_impl* backend, RenderMode render_mode, pvr32addr_t base, taRECT* rect)
+void RenderObjectList(RenderMode render_mode, pvr32addr_t base, taRECT* rect)
 {
     ObjectListEntry obj;
 
     for (;;) {
-        obj.full = vri(vram, base);
+        obj.full = vri(base);
         base += 4;
 
         if (!obj.is_not_triangle_strip) {
-            RenderTriangleStrip(backend, render_mode, obj, rect);
+            RenderTriangleStrip(render_mode, obj, rect);
         } else {
             switch(obj.type) {
                 case 0b111: // link
@@ -327,11 +278,11 @@ void refrend::RenderObjectList(refsw_impl* backend, RenderMode render_mode, pvr3
                     break;
 
                 case 0b100: // triangle array
-                    RenderTriangleArray(backend, render_mode, obj, rect);
+                    RenderTriangleArray(render_mode, obj, rect);
                     break;
                     
                 case 0b101: // quad array
-                    RenderQuadArray(backend, render_mode, obj, rect);
+                    RenderQuadArray(render_mode, obj, rect);
                     break;
 
                 default:
@@ -343,16 +294,13 @@ void refrend::RenderObjectList(refsw_impl* backend, RenderMode render_mode, pvr3
 
 // Render a frame
 // Called on START_RENDER write
-bool refrend::RenderPVR() {
-    numRenders++;
+bool RenderPVR() {
 
     palette_update();
 
     u32 base = REGION_BASE;
 
     RegionArrayEntry entry;
-
-    backEnd->DebugOnFrameStart(numRenders);
         
     // Parse region array
     do {
@@ -369,8 +317,6 @@ bool refrend::RenderPVR() {
 
         parameter_tag_t bgTag;
 
-        backEnd->DebugOnTileStart(rect.left, rect.top);
-
         // register BGPOLY to fpu
         {
             bgTag = ISP_BACKGND_T.full;
@@ -380,63 +326,63 @@ bool refrend::RenderPVR() {
         if (!entry.control.z_keep)
         {
             // Clear Param + Z + stencil buffers
-            backEnd->ClearBuffers(bgTag, ISP_BACKGND_D.f, 0);
+            ClearBuffers(bgTag, ISP_BACKGND_D.f, 0);
         }
 
         // Render OPAQ to TAGS
         if (!entry.opaque.empty)
         {
-            RenderObjectList(backEnd, RM_OPAQUE, entry.opaque.ptr_in_words * 4, &rect);
+            RenderObjectList(RM_OPAQUE, entry.opaque.ptr_in_words * 4, &rect);
         }
 
         // render PT to TAGS
         if (!entry.puncht.empty)
         {
-            RenderObjectList(backEnd, RM_PUNCHTHROUGH, entry.puncht.ptr_in_words * 4, &rect);
+            RenderObjectList(RM_PUNCHTHROUGH, entry.puncht.ptr_in_words * 4, &rect);
         }
 
         //TODO: Render OPAQ modvols
         if (!entry.opaque_mod.empty)
         {
-            RenderObjectList(backEnd, RM_MODIFIER, entry.opaque_mod.ptr_in_words * 4, &rect);
+            RenderObjectList(RM_MODIFIER, entry.opaque_mod.ptr_in_words * 4, &rect);
         }
 
         // Render TAGS to ACCUM
-        backEnd->RenderParamTags(RM_OPAQUE, rect.left, rect.top);
+        RenderParamTags(RM_OPAQUE, rect.left, rect.top);
 
         // layer peeling rendering
         if (!entry.trans.empty)
         {
             // clear the param buffer
-            backEnd->ClearParamBuffer(TAG_INVALID);
+            ClearParamBuffer(TAG_INVALID);
 
             do
             {
                 // prepare for a new pass
-                backEnd->ClearPixelsDrawn();
+                ClearPixelsDrawn();
 
                 // copy depth test to depth reference buffer, clear depth test buffer, clear stencil
-                backEnd->PeelBuffers(FLT_MAX, 0);
+                PeelBuffers(FLT_MAX, 0);
 
                 // render to TAGS
-                RenderObjectList(backEnd, RM_TRANSLUCENT, entry.trans.ptr_in_words * 4, &rect);
+                RenderObjectList(RM_TRANSLUCENT, entry.trans.ptr_in_words * 4, &rect);
 
                 if (!entry.trans_mod.empty)
                 {
-                    RenderObjectList(backEnd, RM_MODIFIER, entry.trans_mod.ptr_in_words * 4, &rect);
+                    RenderObjectList(RM_MODIFIER, entry.trans_mod.ptr_in_words * 4, &rect);
                 }
 
                 // render TAGS to ACCUM
                 // also marks TAGS as invalid, but keeps the index for coplanar sorting
-                backEnd->RenderParamTags(RM_TRANSLUCENT, rect.left, rect.top);
-            } while (backEnd->GetPixelsDrawn() != 0);
+                RenderParamTags(RM_TRANSLUCENT, rect.left, rect.top);
+            } while (GetPixelsDrawn() != 0);
         }
 
         // Copy to vram
         if (!entry.control.no_writeout)
         {
             auto copy = new u8[32 * 32 * 4];
-            memcpy(copy, backEnd->GetColorOutputBuffer(), 32 * 32 * 4);
+            memcpy(copy, GetColorOutputBuffer(), 32 * 32 * 4);
 
             auto field = SCALER_CTL.fieldselect;
             auto interlace = SCALER_CTL.interlace;
@@ -464,7 +410,7 @@ bool refrend::RenderPVR() {
                 for (int x = 0; x < 32; x++)
                 {
                     auto pixel = (((src[0] >> 3) & 0x1F) << 0) | (((src[1] >> 2) & 0x3F) << 5) | (((src[2] >> 3) & 0x1F) << 11);
-                    pvr_write_area1_16(vram, dst, pixel);
+                    pvr_write_area1_16(dst, pixel);
 
                     dst += bpp;
                     src += 4; // skip alpha
@@ -475,24 +421,13 @@ bool refrend::RenderPVR() {
         }
 
         // clear the tsp cache
-        backEnd->ClearFpuEntries();
+        ClearFpuEntries();
     } while (!entry.control.last_region);
 
     return false;
 }
 
-bool refrend::Init() {
-    return true;
-}
-
-refrend::~refrend() {
-    if (backEnd) {
-        delete backEnd;
-        backEnd = nullptr;
-    }
-}
-
-void refrend::Present()
+void Present()
 {
 
     if (FB_R_SIZE.fb_x_size == 0 || FB_R_SIZE.fb_y_size == 0)
@@ -567,7 +502,7 @@ void refrend::Present()
         {
             for (int i = 0; i < width; i++)
             {
-                u16 src = pvr_read_area1_16(vram, addr);
+                u16 src = pvr_read_area1_16(addr);
                 *dst++ = (((src >> RED_5) & 0x1F) << 3) + FB_R_CTRL.fb_concat;
                 *dst++ = (((src >> 5) & 0x1F) << 3) + FB_R_CTRL.fb_concat;
                 *dst++ = (((src >> BLUE_5) & 0x1F) << 3) + FB_R_CTRL.fb_concat;
@@ -586,7 +521,7 @@ void refrend::Present()
         {
             for (int i = 0; i < width; i++)
             {
-                u16 src = pvr_read_area1_16(vram, addr);
+                u16 src = pvr_read_area1_16(addr);
                 *dst++ = (((src >> RED_6) & 0x1F) << 3) + FB_R_CTRL.fb_concat;
                 *dst++ = (((src >> 5) & 0x3F) << 2) + (FB_R_CTRL.fb_concat >> 1);
                 *dst++ = (((src >> BLUE_6) & 0x1F) << 3) + FB_R_CTRL.fb_concat;
@@ -607,14 +542,14 @@ void refrend::Present()
             {
                 if (addr & 1)
                 {
-                    u32 src = pvr_read_area1_32(vram, addr - 1);
+                    u32 src = pvr_read_area1_32(addr - 1);
                     *dst++ = src >> RED_8;
                     *dst++ = src >> 8;
                     *dst++ = src >> BLUE_8;
                 }
                 else
                 {
-                    u32 src = pvr_read_area1_32(vram, addr);
+                    u32 src = pvr_read_area1_32(addr);
                     *dst++ = src >> (RED_8 + 8);
                     *dst++ = src >> 16;
                     *dst++ = src >> (BLUE_8 + 8);
@@ -634,7 +569,7 @@ void refrend::Present()
         {
             for (int i = 0; i < width; i++)
             {
-                u32 src = pvr_read_area1_32(vram, addr);
+                u32 src = pvr_read_area1_32(addr);
                 *dst++ = src >> RED_8;
                 *dst++ = src >> 8;
                 *dst++ = src >> BLUE_8;

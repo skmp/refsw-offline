@@ -16,7 +16,7 @@ struct text_info {
 // for TSP and TCW
 #include "core_structs.h"
 
-text_info raw_GetTexture(u8* vram, TSP tsp, TCW tcw);
+text_info raw_GetTexture(TSP tsp, TCW tcw);
 
 void palette_update();
 
