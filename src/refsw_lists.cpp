@@ -66,7 +66,6 @@
 
 //#include <omp.h>
 #include "pvr_mem.h"
-#include "oslib.h"
 #include "TexCache.h"
 #include "TexConv.h"  // for pixel buffer, used for presenting
 
