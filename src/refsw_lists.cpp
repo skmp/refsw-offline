@@ -61,6 +61,9 @@
     tag buffer is used to sort the pixels by tag as well as depth in order to support co-planar polygons.
 */
 
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
+
 //#include <omp.h>
 #include "Renderer_if.h"
 #include "pvr_mem.h"
@@ -75,12 +78,7 @@
 
 #include "pvr_regs.h"
 
-#if HOST_OS == OS_WINDOWS
-#include <Windows.h>
-static BITMAPINFOHEADER bi = { sizeof(BITMAPINFOHEADER), 0, 0, 1, 32, BI_RGB };
-#else
-#include <png.h>
-#endif
+// #include <png.h>
 
 #include "refsw_lists.h"
 
@@ -206,7 +204,7 @@ struct refrend : Renderer
     }
 
     // decode an object (params + vertexes)
-    u32 decode_pvr_vetrices(DrawParameters* params, pvr32addr_t base, u32 skip, u32 shadow, Vertex* vtx, int count)
+    u32 decode_pvr_vertices(DrawParameters* params, pvr32addr_t base, u32 skip, u32 shadow, Vertex* vtx, int count)
     {
         bool PSVM=FPU_SHAD_SCALE.intensity_shadow == 0;
 
@@ -255,7 +253,7 @@ struct refrend : Renderer
 
         u32 tag_address = param_base + obj.tstrip.param_offs_in_words * 4;
 
-        decode_pvr_vetrices(&params, tag_address, obj.tstrip.skip, obj.tstrip.shadow, vtx, 8);
+        decode_pvr_vertices(&params, tag_address, obj.tstrip.skip, obj.tstrip.shadow, vtx, 8);
 
 
         for (int i = 0; i < 6; i++)
@@ -288,7 +286,7 @@ struct refrend : Renderer
             Vertex vtx[3];
 
             u32 tag_address = param_ptr;
-            param_ptr = decode_pvr_vetrices(&params, tag_address, obj.tarray.skip, obj.tarray.shadow, vtx, 3);
+            param_ptr = decode_pvr_vertices(&params, tag_address, obj.tarray.skip, obj.tarray.shadow, vtx, 3);
             
             parameter_tag_t tag  = CoreTagFromDesc(params.isp.CacheBypass, obj.tstrip.shadow, obj.tstrip.skip, (tag_address - param_base)/4, 0).full;
 
@@ -311,7 +309,7 @@ struct refrend : Renderer
             Vertex vtx[4];
 
             u32 tag_address = param_ptr;
-            param_ptr = decode_pvr_vetrices(&params, tag_address, obj.qarray.skip, obj.qarray.shadow, vtx, 4);
+            param_ptr = decode_pvr_vertices(&params, tag_address, obj.qarray.skip, obj.qarray.shadow, vtx, 4);
             
             parameter_tag_t tag = CoreTagFromDesc(params.isp.CacheBypass, obj.qarray.shadow, obj.qarray.skip, (tag_address - param_base)/4, 0).full;
 
@@ -376,6 +374,8 @@ struct refrend : Renderer
             taRECT rect;
             rect.top = entry.control.tiley * 32;
             rect.left = entry.control.tilex * 32;
+
+			printf("Render Tile(%i,%i)\n", entry.control.tilex, entry.control.tiley);
 
             rect.bottom = rect.top + 32;
             rect.right = rect.left + 32;
@@ -493,13 +493,6 @@ struct refrend : Renderer
 
         return false;
     }
-
-#if HOST_OS == OS_WINDOWS
-    HWND hWnd;
-    HBITMAP hBMP = 0, holdBMP;
-    HDC hmem;
-#endif
-
 
     virtual bool Init() {
 
@@ -672,87 +665,12 @@ struct refrend : Renderer
         }
         
 #if defined(REFSW_OFFLINE)
+
     char sname[256];
 	sprintf(sname, "FB_W_SOF1.png");
-	FILE *fp = fopen(sname, "wb");
-    if (fp == NULL)
-    	return;
 
-    auto CurrentRow = (png_bytep)pb.data();
+	stbi_write_png(sname, width, height, 4, pb.data(), width * 4);
 
-    if (SPG_CONTROL.interlace & SPG_STATUS.fieldnum) {
-        CurrentRow += width * 4;
-    }
-
-	png_bytepp rows = (png_bytepp)malloc(height * sizeof(png_bytep));
-	for (int y = 0; y < height; y++) {
-		rows[y] = CurrentRow;//(png_bytep)malloc(w * 4);	// 32-bit per pixel
-		//glReadPixels(0, y, w, 1, GL_RGBA, GL_UNSIGNED_BYTE, rows[y]);
-        CurrentRow += width * 4;
-        if (SPG_CONTROL.interlace) {
-            CurrentRow += width * 4;
-        }
-	}
-
-    png_structp png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
-    png_infop info_ptr = png_create_info_struct(png_ptr);
-
-    png_init_io(png_ptr, fp);
-
-
-    /* write header */
-    png_set_IHDR(png_ptr, info_ptr, width, height,
-                         8, PNG_COLOR_TYPE_RGBA, PNG_INTERLACE_NONE,
-                         PNG_COMPRESSION_TYPE_BASE, PNG_FILTER_TYPE_BASE);
-
-    png_write_info(png_ptr, info_ptr);
-
-
-            /* write bytes */
-    png_write_image(png_ptr, rows);
-
-    /* end write */
-    png_write_end(png_ptr, NULL);
-    fclose(fp);
-
-/*
-	for (int y = 0; y < h; y++)
-		free(rows[y]);*/
-	free(rows);
-#elif HOST_OS == OS_WINDOWS
-        u32 *psrc = pb.data();
-        SetDIBits(hmem, hBMP, 0, SPG_CONTROL.interlace ? height * 2 : height, psrc, (BITMAPINFO*)& bi, DIB_RGB_COLORS);
-
-        RECT clientRect;
-
-        GetClientRect(hWnd, &clientRect);
-
-        HDC hdc = GetDC(hWnd);
-        int w = clientRect.right - clientRect.left;
-        int h = clientRect.bottom - clientRect.top;
-        int x = (w - 640) / 2;
-        int y = (h - 480) / 2;
-
-        StretchBlt(hdc, x, y+480, 640, -480, hmem, 0, 0, 640, 480, SRCCOPY);
-        ReleaseDC(hWnd, hdc);
-#elif defined(SUPPORT_X11)
-        extern Window x11_win;
-        extern Display* x11_disp;
-        extern Visual* x11_vis;
-
-        extern int x11_width;
-        extern int x11_height;
-        
-        u32 *psrc = pb.data();
-        XImage* ximage = XCreateImage(x11_disp, x11_vis, 24, ZPixmap, 0, (char*)psrc, width, SPG_CONTROL.interlace ? height * 2 : height, 32, width * 4);
-
-        GC gc = XCreateGC(x11_disp, x11_win, 0, 0);
-        XPutImage(x11_disp, x11_win, gc, ximage, 0, 0, (x11_width - width) / 2, (x11_height - (SPG_CONTROL.interlace ? height * 2 : height)) / 2, width, SPG_CONTROL.interlace ? height * 2 : height);
-        XFree(ximage);
-        XFreeGC(x11_disp, gc);
-#else
-        // TODO softrend without X11 (SDL f.e.)
-    die("Softrend doesn't know how to update the screen");
 #endif
     }
 };

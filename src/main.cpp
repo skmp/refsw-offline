@@ -25,7 +25,7 @@ u8 vram[VRAM_SIZE];
 
 int main(int argc, char **argv)
 {
-    if (argc != 2)
+    if (argc != 3)
     {
         printf("expected %s path/vram_<name>.bin\n", argv[0]);
         return -1;
@@ -41,7 +41,8 @@ int main(int argc, char **argv)
 
     printf("loading vram from '%s'... likely to not work for 16mb vram ...\n", path_vram.c_str());
     {
-        FILE* v0 = fopen((const char*)path_vram.c_str(), "rb");
+		const char* fName = (const char*)path_vram.c_str();
+        FILE* v0 = fopen(argv[1], "rb");
         if (!v0) {
             printf("Failed\n");
             return -1;
@@ -56,7 +57,7 @@ int main(int argc, char **argv)
     
     printf("loading pvr regs from '%s'...\n", path_pvr_regs.c_str());
     {
-        FILE* regs = fopen((const char*)path_pvr_regs.c_str(), "rb");
+        FILE* regs = fopen(argv[2], "rb");
         if (!regs) {
             printf("Failed\n");
             return -1;
