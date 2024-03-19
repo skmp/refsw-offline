@@ -184,7 +184,7 @@ struct refsw_impl
 		const FpuEntry *entry, float x, float y, float W, u8 *rb);
 
     // Depth processing for a pixel -- render_mode 0: OPAQ, 1: PT, 2: TRANS
-    void PixelFlush_isp(RenderMode render_mode, u32 depth_mode, int pixIdx, float x, float y, float invW, u8 *pb, parameter_tag_t tag);
+    void PixelFlush_isp(RenderMode render_mode, u32 depth_mode, int pixIdx, float x, float y, float invW, u8 *pb, ZType* zb, parameter_tag_t tag);
 };
 
 // Used for deferred TSP processing lookups

@@ -43,7 +43,7 @@ bool refsw_impl::Init() {
 
 void refsw_impl::ClearBuffers(u32 paramValue, float depthValue, u32 stencilValue)
 {
-    auto zb = reinterpret_cast<float*>(render_buffer + DEPTH1_BUFFER_PIXEL_OFFSET);
+    auto zb = depthBuffer1;
     auto stencil = reinterpret_cast<u32*>(render_buffer + STENCIL_BUFFER_PIXEL_OFFSET);
     auto pb = reinterpret_cast<parameter_tag_t*>(render_buffer + PARAM_BUFFER_PIXEL_OFFSET);
 
@@ -64,7 +64,7 @@ void refsw_impl::ClearParamBuffer(parameter_tag_t paramValue) {
 
 void refsw_impl::PeelBuffers(float depthValue, u32 stencilValue)
 {
-    auto zb = reinterpret_cast<float*>(render_buffer + DEPTH1_BUFFER_PIXEL_OFFSET);
+    auto zb = depthBuffer1;
     auto zb2 = reinterpret_cast<float*>(render_buffer + DEPTH2_BUFFER_PIXEL_OFFSET);
     auto stencil = reinterpret_cast<u32*>(render_buffer + STENCIL_BUFFER_PIXEL_OFFSET);
 
@@ -108,6 +108,7 @@ u32 refsw_impl::GetPixelsDrawn()
 void refsw_impl::RenderParamTags(RenderMode rm, int tileX, int tileY) {
 
     auto rb = render_buffer;
+	auto dz = depthBuffer1;
     float halfpixel = HALF_OFFSET.tsp_pixel_half_offset ? 0.5f : 0;
     taRECT rect;
     rect.left = tileX;
@@ -122,9 +123,10 @@ void refsw_impl::RenderParamTags(RenderMode rm, int tileX, int tileY) {
                 ISP_BACKGND_T_type t;
                 t.full = tag;
                 auto Entry = GetFpuEntry(&rect, rm, t);
-                PixelFlush_tsp(rm == RM_PUNCHTHROUGH, &Entry, x + halfpixel, y + halfpixel, (u8*)rb,  *(f32*)&rb[DEPTH1_BUFFER_PIXEL_OFFSET]);
+                PixelFlush_tsp(rm == RM_PUNCHTHROUGH, &Entry, x + halfpixel, y + halfpixel, (u8*)rb,  *(f32*)dz);
             }
             rb++;
+			dz++;
         }
     }
 }
@@ -291,15 +293,15 @@ void refsw_impl::RasterizeTriangle(RenderMode render_mode, DrawParameters* param
     }
 
     // Bounding rectangle
-    int minx = mmin(X1, X2, X3, area->left);
-    int miny = mmin(Y1, Y2, Y3, area->top);
+//  int minx = mmin(X1, X2, X3, area->left);
+//  int miny = mmin(Y1, Y2, Y3, area->top);
 
-    int spanx = mmax(X1+1, X2+1, X3+1, area->right - 1) - minx + 1;
-    int spany = mmax(Y1+1, Y2+1, Y3+1, area->bottom - 1) - miny + 1;
+//  int spanx = mmax(X1+1, X2+1, X3+1, area->right - 1) - minx + 1;
+//  int spany = mmax(Y1+1, Y2+1, Y3+1, area->bottom - 1) - miny + 1;
 
     //Inside scissor area?
-    if (spanx < 0 || spany < 0)
-        return;
+//  if (spanx < 0 || spany < 0)
+//      return;
 
     // Half-edge constants
     const float DX12 = sgn * (X1 - X2);
@@ -318,25 +320,31 @@ void refsw_impl::RasterizeTriangle(RenderMode render_mode, DrawParameters* param
     float C4 = v4 ? DY41 * (X4 + area->left) - DX41 * (Y4 + area->top) : 1;
 
 
-    u8* cb_y = (u8*)render_buffer;
-    cb_y += (miny - area->top) * stride_bytes + (minx - area->left) * 4;
+    u8*    cb_y = (u8*)render_buffer;
+	ZType* dz_y = depthBuffer1;
+
+//	int stepY = (miny - area->top) * stride_bytes + (minx - area->left) * 4;
+//   cb_y += (miny - area->top) * stride_bytes + (minx - area->left) * 4;
+//	dz_y += stepY>>2; // 4 byte -> 1 float
 
     PlaneStepper3 Z;
     Z.Setup(area, v1, v2, v3, v1.z, v2.z, v3.z);
 
     float halfpixel = HALF_OFFSET.fpu_pixel_half_offset ? 0.5f : 0;
-    float y_ps = miny - area->top + halfpixel;
-    float minx_ps = minx - area->left + halfpixel;
+    float y_ps    = halfpixel;
+    float minx_ps = halfpixel;
 
     //auto pixelFlush = pixelPipeline->GetIsp(render_mode, params->isp);
 
-    // Loop through pixels
+    // Loop through ALL pixels in the tile (no smart clipping)
 	int pixidx = 0;
-    for (int y = spany; y > 0; y -= 1)
+	for (int y = 0; y < 32; y++)
     {
-        u8* cb_x = cb_y;
+        u8*    cb_x = cb_y;
+		ZType* dz_x = dz_y;
+
         float x_ps = minx_ps;
-        for (int x = spanx; x > 0; x -= 1)
+        for (int x = 0; x < 32; x++)
         {
             float Xhs12 = C1 + DX12 * y_ps - DY12 * x_ps;
             float Xhs23 = C2 + DX23 * y_ps - DY23 * x_ps;
@@ -344,20 +352,23 @@ void refsw_impl::RasterizeTriangle(RenderMode render_mode, DrawParameters* param
             float Xhs41 = C4 + DX41 * y_ps - DY41 * x_ps;
 
             bool inTriangle = Xhs12 >= 0 && Xhs23 >= 0 && Xhs31 >= 0 && Xhs41 >= 0;
+			// Pixel clipper (left:0/right:32)
+			bool inClip     = (x >= area->left) && (x < area->right) && (y >= area->top) && ( y < area->bottom);
 
-            if (inTriangle)
-            {
+            if (inTriangle) {
                 float invW = Z.Ip(x_ps, y_ps);
-                PixelFlush_isp(render_mode, params->isp.DepthMode, pixidx, x_ps, y_ps, invW, cb_x, tag);
+                PixelFlush_isp(render_mode, params->isp.DepthMode, pixidx, x_ps, y_ps, invW, cb_x, dz_x, tag);
             }
 
 			pixidx++;
             cb_x += 4;
+			dz_x++;
             x_ps = x_ps + 1;
         }
     next_y:
         cb_y += stride_bytes;
         y_ps = y_ps + 1;
+		dz_y += MAX_RENDER_WIDTH;
     }
 }
     
@@ -374,9 +385,8 @@ void refsw_impl::operator delete(void* p) {
 }
 
 
-
 // Clamp and flip a texture coordinate
-int ClampFlip( bool pp_Clamp, bool pp_Flip
+static int ClampFlip( bool pp_Clamp, bool pp_Flip
 	                , int coord, int size) {
     if (pp_Clamp) { // clamp
         if (coord < 0) {
@@ -650,7 +660,6 @@ static u8 LookupFogTable(float invW) {
 
 // Color Clamp and Fog a pixel
 static Color FogUnit(bool pp_Offset, bool pp_ColorClamp, u32 pp_FogCtrl, Color col, float invW, u8 offs_a) {
-
     if (pp_ColorClamp) {
         Color clamp_max = { FOG_CLAMP_MAX };
         Color clamp_min = { FOG_CLAMP_MIN };
@@ -715,7 +724,6 @@ bool refsw_impl::PixelFlush_tsp(
 	bool pp_UseAlpha, bool pp_Texture, bool pp_Offset, bool pp_ColorClamp, u32 pp_FogCtrl, bool pp_IgnoreAlpha, bool pp_ClampU, bool pp_ClampV, bool pp_FlipU, bool pp_FlipV, u32 pp_FilterMode, u32 pp_ShadInstr, bool pp_AlphaTest, u32 pp_SrcSel, u32 pp_DstSel, u32 pp_SrcInst, u32 pp_DstInst,
 	const FpuEntry *entry, float x, float y, float W, u8 *rb)
 {
-    //auto zb = (float *)&rb[DEPTH1_BUFFER_PIXEL_OFFSET * 4];
     auto stencil = (u32 *)&rb[STENCIL_BUFFER_PIXEL_OFFSET * 4];
     auto cb = (Color*)&rb[ACCUM1_BUFFER_PIXEL_OFFSET * 4];
     auto pb = (parameter_tag_t*)&rb[PARAM_BUFFER_PIXEL_OFFSET * 4];
@@ -744,9 +752,8 @@ bool refsw_impl::PixelFlush_tsp(
 }
 
 // Depth processing for a pixel -- render_mode 0: OPAQ, 1: PT, 2: TRANS
-void refsw_impl::PixelFlush_isp(RenderMode render_mode, u32 depth_mode, int pixIdx, float x, float y, float invW, u8 *pb, parameter_tag_t tag)
+void refsw_impl::PixelFlush_isp(RenderMode render_mode, u32 depth_mode, int pixIdx, float x, float y, float invW, u8 *pb, ZType* zb, parameter_tag_t tag)
 {
-    auto zb = (float*)&pb [DEPTH1_BUFFER_PIXEL_OFFSET * 4];
     auto zb2 = (float*)&pb[DEPTH2_BUFFER_PIXEL_OFFSET * 4];
     auto stencil = (u32*)&pb[STENCIL_BUFFER_PIXEL_OFFSET * 4];
 
