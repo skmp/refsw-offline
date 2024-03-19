@@ -71,9 +71,3 @@ int main(int argc, char **argv)
 
     return 0;
 }
-
-void os_DebugBreak()
-{
-	printf("DEBUGBREAK!\n");
-    exit(-1);
-}
