@@ -50,6 +50,7 @@ union ObjectListEntry {
         u32 skip : 3;
         u32 shadow : 1;
         u32 mask : 6;
+        u32 is_not_triangle_strip : 1;
     } tstrip;
 
     struct {
@@ -57,6 +58,7 @@ union ObjectListEntry {
         u32 skip : 3;
         u32 shadow : 1;
         u32 prims : 4;
+        u32 type : 3;
     } tarray;
 
     struct {
@@ -64,6 +66,7 @@ union ObjectListEntry {
         u32 skip : 3;
         u32 shadow : 1;
         u32 prims : 4;
+        u32 type : 3;
     } qarray;
 
     struct {
@@ -71,6 +74,7 @@ union ObjectListEntry {
         u32 next_block_ptr_in_words : 22;
         u32 pad4 : 4;
         u32 end_of_list : 1;
+        u32 type : 3;
     } link;
 
     u32 full;

@@ -4,6 +4,9 @@ project(refsw-offline)
 
 enable_language(C ASM CXX)
 
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED On)
+
 list(APPEND shared_src
     src/refsw_lists.cpp
     src/refsw_tile.cpp
