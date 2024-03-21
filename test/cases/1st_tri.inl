@@ -3,6 +3,7 @@ FPU_PARAM_CFG |= 1 << 21;
 SCALER_CTL.vscalefactor = 0x400;
 FB_W_CTRL.fb_packmode = 0x1;
 FB_R_SIZE = { .fb_x_size = 640/2-1, .fb_y_size = 480-1, .fb_modulus = 1 };
+FB_R_CTRL = { .fb_depth = fbde_565 };
 
 FB_W_SOF1 = 4 * 1024 * 1024;
 FB_W_LINESTRIDE =  { .stride = 640 * 2 / 8 };
@@ -90,12 +91,12 @@ vram32_write(&param_ptr, 0xFF0000FF);
 vram32_write(&param_ptr, 24.0f);
 vram32_write(&param_ptr, 8.0f);
 vram32_write(&param_ptr, 1.0f);
-vram32_write(&param_ptr, 0xFFFF00FF);
+vram32_write(&param_ptr, 0xFFFF0000);
 
 vram32_write(&param_ptr, 24.0f);
 vram32_write(&param_ptr, 24.0f);
 vram32_write(&param_ptr, 1.0f);
-vram32_write(&param_ptr, 0xFF00FFFF);
+vram32_write(&param_ptr, 0xFF00FF00);
 
 RenderPVR();
 RenderFramebuffer();

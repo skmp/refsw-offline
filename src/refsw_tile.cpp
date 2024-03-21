@@ -258,7 +258,7 @@ u32 decode_pvr_vetrices(DrawParameters* params, pvr32addr_t base, u32 skip, u32 
 
 FpuEntry GetFpuEntry(taRECT *rect, RenderMode render_mode, ISP_BACKGND_T_type core_tag)
 {
-    FpuEntry entry;
+    FpuEntry entry = {};
     Vertex vtx[3];
     decode_pvr_vetrices(&entry.params, PARAM_BASE + core_tag.tag_address_in_words * 4, core_tag.skip, core_tag.shadow, vtx, 3, core_tag.tag_offset);
     // generate
