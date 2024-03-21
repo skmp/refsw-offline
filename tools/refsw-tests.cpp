@@ -23,11 +23,12 @@ void InitializePvr() {
 
 #include "test/framework.inl"
 
-#define NAME viewport_limits
+#define NAME 1st_tri
 #include "test/includer.inl"
 
+
 struct { const char* name; void (*fn)(); } test_list[] = {
-    CASE(viewport_limits),
+    CASE(1st_tri),
 };
 
 int main(int argc, char **argv)
@@ -36,6 +37,7 @@ int main(int argc, char **argv)
 
     for (auto & test_case: test_list) {
         printf("Test Case: %s\n", test_case.name);
+        sprintf(fb_name, "%s.png", test_case.name);
         test_case.fn();
     }
 

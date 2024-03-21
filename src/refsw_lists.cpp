@@ -104,9 +104,12 @@ void RenderTriangle(RenderMode render_mode, DrawParameters* params, parameter_ta
     }
 }
 
+
+char fb_name[256];
+
 // called on vblank
 bool RenderFramebuffer() {
-    Present();
+    Present(fb_name);
     return false;
 }
 
@@ -427,7 +430,7 @@ bool RenderPVR() {
     return false;
 }
 
-void Present()
+void Present(const char* sname)
 {
 
     if (FB_R_SIZE.fb_x_size == 0 || FB_R_SIZE.fb_y_size == 0)
@@ -585,13 +588,7 @@ void Present()
         break;
     }
         
-#if defined(REFSW_OFFLINE)
 
-char sname[256];
-sprintf(sname, "FB_W_SOF1.png");
-
-stbi_write_png(sname, width, height, 4, pb.data(), width * 4);
-
-#endif
+    stbi_write_png(sname, width, height, 4, pb.data(), width * 4);
 }
 

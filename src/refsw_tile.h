@@ -171,4 +171,5 @@ void RenderTriangleArray(RenderMode render_mode, ObjectListEntry obj, taRECT* re
 void RenderQuadArray(RenderMode render_mode, ObjectListEntry obj, taRECT* rect);
 void RenderObjectList(RenderMode render_mode, pvr32addr_t base, taRECT* rect);
 bool RenderPVR();
-void Present();
+void Present(const char* name);
+extern char fb_name[256];

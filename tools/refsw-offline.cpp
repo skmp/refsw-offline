@@ -68,6 +68,7 @@ int main(int argc, char **argv)
 
     printf("Hackpresenting ...\n");
 
+    strcpy(fb_name, "FB_W_SOF1.png");
     RenderFramebuffer();
 
     return 0;
