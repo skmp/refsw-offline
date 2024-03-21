@@ -36,6 +36,7 @@ int main(int argc, char **argv)
 
     for (auto & test_case: test_list) {
         printf("Test Case: %s\n", test_case.name);
+        test_case.fn();
     }
 
     return 0;
