@@ -136,7 +136,7 @@ void ClearFpuEntries();
 f32 f16(u16 v);
 
 //decode a vertex in the native pvr format
-void decode_pvr_vertex(DrawParameters* params, pvr32addr_t ptr,Vertex* cv);
+void decode_pvr_vertex(DrawParameters* params, pvr32addr_t ptr,Vertex* cv, u32 shadow);
 // decode an object (params + vertexes)
 u32 decode_pvr_vetrices(DrawParameters* params, pvr32addr_t base, u32 skip, u32 shadow, Vertex* vtx, int count, int offset);
 
@@ -165,9 +165,6 @@ void RenderTriangle(RenderMode render_mode, DrawParameters* params, parameter_ta
 // called on vblank
 bool RenderFramebuffer();
 u32 ReadRegionArrayEntry(u32 base, RegionArrayEntry* entry);
-f32 f16(u16 v);
-void decode_pvr_vertex(DrawParameters* params, pvr32addr_t ptr,Vertex* cv);
-u32 decode_pvr_vertices(DrawParameters* params, pvr32addr_t base, u32 skip, u32 shadow, Vertex* vtx, int count);
 ISP_BACKGND_T_type CoreTagFromDesc(u32 cache_bypass, u32 shadow, u32 skip, u32 tag_address, u32 tag_offset);
 void RenderTriangleStrip(RenderMode render_mode, ObjectListEntry obj, taRECT* rect);
 void RenderTriangleArray(RenderMode render_mode, ObjectListEntry obj, taRECT* rect);

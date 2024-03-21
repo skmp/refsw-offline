@@ -23,7 +23,7 @@ struct DrawParameters
     TSP tsp;
     TCW tcw;
     TSP tsp2;
-    TSP tcw2;
+    TCW tcw2;
 };
 
 enum RenderMode {

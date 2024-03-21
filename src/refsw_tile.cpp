@@ -157,7 +157,7 @@ f32 f16(u16 v)
 	}
 
 //decode a vertex in the native pvr format
-void decode_pvr_vertex(DrawParameters* params, pvr32addr_t ptr, Vertex* cv)
+void decode_pvr_vertex(DrawParameters* params, pvr32addr_t ptr, Vertex* cv, u32 shadow)
 {
     //XYZ
     //UV
@@ -194,6 +194,34 @@ void decode_pvr_vertex(DrawParameters* params, pvr32addr_t ptr, Vertex* cv)
         u32 col=vri(ptr);ptr+=4;
         vert_packed_color_(cv->spc,col);
     }
+
+    if (shadow) {
+        if (params->isp.Texture)
+        {	//Do texture , if any
+            if (params->isp.UV_16b)
+            {
+                u32 uv=vri(ptr);
+                cv->u1 = f16((u16)(uv >>16));
+                cv->v1 = f16((u16)(uv >> 0));
+                ptr+=4;
+            }
+            else
+            {
+                cv->u1=vrf(ptr);ptr+=4;
+                cv->v1=vrf(ptr);ptr+=4;
+            }
+        }
+
+        //Color
+        u32 col1=vri(ptr);ptr+=4;
+        vert_packed_color_(cv->col1,col1);
+        if (params->isp.Offset)
+        {
+            //Intensity color
+            u32 col1=vri(ptr);ptr+=4;
+            vert_packed_color_(cv->spc1,col1);
+        }
+    }
 }
 
 // decode an object (params + vertexes)
@@ -221,7 +249,7 @@ u32 decode_pvr_vetrices(DrawParameters* params, pvr32addr_t base, u32 skip, u32 
     }
 
     for (int i = 0; i < count; i++) {
-        decode_pvr_vertex(params,base, &vtx[i]);
+        decode_pvr_vertex(params,base, &vtx[i], shadow);
         base += (3 + skip * (shadow+1)) * 4;
     }
 

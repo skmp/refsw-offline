@@ -163,7 +163,7 @@ u32 decode_pvr_vertices(DrawParameters* params, pvr32addr_t base, u32 skip, u32 
     }
 
     for (int i = 0; i < count; i++) {
-        decode_pvr_vertex(params,base, &vtx[i]);
+        decode_pvr_vertex(params,base, &vtx[i], shadow);
         base += (3 + skip * (shadow+1)) * 4;
     }
 
