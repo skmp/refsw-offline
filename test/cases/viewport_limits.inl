@@ -47,18 +47,18 @@ vram32_write(&param_ptr, TSP {
 
 vram32_write(&param_ptr, TCW {});
 
-vram32_write(&param_ptr, 0.0f);
-vram32_write(&param_ptr, 0.0f);
+vram32_write(&param_ptr, 8.0f);
+vram32_write(&param_ptr, 8.0f);
 vram32_write(&param_ptr, 1.0f);
 vram32_write(&param_ptr, 0xFF0000FF);
 
-vram32_write(&param_ptr, 32.0f);
-vram32_write(&param_ptr, 0.0f);
+vram32_write(&param_ptr, 24.0f);
+vram32_write(&param_ptr, 8.0f);
 vram32_write(&param_ptr, 1.0f);
 vram32_write(&param_ptr, 0xFFFF00FF);
 
-vram32_write(&param_ptr, 32.0f);
-vram32_write(&param_ptr, 32.0f);
+vram32_write(&param_ptr, 24.0f);
+vram32_write(&param_ptr, 24.0f);
 vram32_write(&param_ptr, 1.0f);
 vram32_write(&param_ptr, 0xFF00FFFF);
 
