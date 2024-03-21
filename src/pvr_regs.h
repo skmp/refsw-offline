@@ -351,7 +351,7 @@ union ISP_BACKGND_T_type
 	struct
 	{
 		u32 tag_offset   : 3;
-		u32 tag_address  : 21;
+		u32 tag_address_in_words  : 21;
 		u32 skip         : 3;
 		u32 shadow       : 1;
 		u32 cache_bypass : 1;

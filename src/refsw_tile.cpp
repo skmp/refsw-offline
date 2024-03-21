@@ -260,7 +260,7 @@ FpuEntry GetFpuEntry(taRECT *rect, RenderMode render_mode, ISP_BACKGND_T_type co
 {
     FpuEntry entry;
     Vertex vtx[3];
-    decode_pvr_vetrices(&entry.params, PARAM_BASE + core_tag.tag_address * 4, core_tag.skip, core_tag.shadow, vtx, 3, core_tag.tag_offset);
+    decode_pvr_vetrices(&entry.params, PARAM_BASE + core_tag.tag_address_in_words * 4, core_tag.skip, core_tag.shadow, vtx, 3, core_tag.tag_offset);
     // generate
     if (entry.params.isp.Texture)
     {
