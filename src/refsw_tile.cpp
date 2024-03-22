@@ -474,7 +474,7 @@ static Color TextureFetchOld(const text_info *texture, int u, int v) {
     return { .raw =  textel };
 }
 
-u32 ExpandToARGB8888(u32 color, u32 mode) {
+u32 ExpandToARGB8888(u32 color, u32 mode, bool ScanOrder /* TODO: Expansion Patterns */) {
 	switch(mode)
 	{
         case 0: return ARGB1555_32(color);
@@ -539,6 +539,42 @@ u32 TexStride(const text_info *texture) {
         return 8U << texture->tsp.TexU;
 }
 
+u32 DecodeTextel(u32 PixelFmt, u32 PalSelect, u64 memtel, u32 offset) {
+    auto memtel_32 = (u32*)&memtel;
+    auto memtel_16 = (u16*)&memtel;
+    auto memtel_8 = (u8*)&memtel;
+
+    switch (PixelFmt)
+    {
+        case PixelReserved:
+        case Pixel1555:
+        case Pixel565:
+        case Pixel4444:
+        case PixelBumpMap:
+            return memtel_16[offset & 3]; break;
+
+        case PixelYUV: {
+            auto memtel_yuv = memtel_32[(offset >> 1) & 1];
+            auto memtel_yuv8 = (u8*)&memtel_yuv;
+            return offset & 1
+                ? YUV422(memtel_yuv8[0], memtel_yuv8[1], memtel_yuv8[2])
+                : YUV422(memtel_yuv8[3], memtel_yuv8[1], memtel_yuv8[2]);
+            }
+
+        case PixelPal4: {
+            auto local_idx = (memtel >> (offset & 15)) & 15;
+            auto idx = PalSelect * 16 | local_idx;
+            return PALETTE_RAM[idx];
+        }
+        break;
+        case PixelPal8: {
+            auto local_idx = memtel_8[offset & 7];
+            auto idx = (PalSelect / 16) * 256 | local_idx;
+            return PALETTE_RAM[idx];
+        }
+        break;
+    }
+}
 
 static Color TextureFetch(const text_info *texture, int u, int v) {
     
@@ -557,53 +593,19 @@ static Color TextureFetch(const text_info *texture, int u, int v) {
         memtel = VQLookup(start_address, memtel, offset / 4);
     }
 
-    auto memtel_32 = (u32*)&memtel;
-    auto memtel_16 = (u16*)&memtel;
-    auto memtel_8 = (u8*)&memtel;
-
-    u32 textel;
-    switch (texture->tcw.PixelFmt)
-    {
-        case PixelReserved:
-        case Pixel1555:
-        case Pixel565:
-        case Pixel4444:
-        case PixelBumpMap:
-            textel = memtel_16[offset & 3]; break;
-            break;
-        case PixelYUV: {
-            auto memtel_yuv = memtel_32[(offset >> 1) & 1];
-            auto memtel_yuv8 = (u8*)&memtel_yuv;
-            textel = offset & 1
-                ? YUV422(memtel_yuv8[0], memtel_yuv8[1], memtel_yuv8[2])
-                : YUV422(memtel_yuv8[3], memtel_yuv8[1], memtel_yuv8[2]);
-            }
-            break;
-        case PixelPal4: {
-            auto local_idx = (memtel >> (offset & 15)) & 15;
-            auto pal_idx = texture->tcw.PalSelect * 16 | local_idx;
-            textel = PALETTE_RAM[pal_idx];
-        }
-        break;
-        case PixelPal8: {
-            auto local_idx = memtel_8[offset & 7];
-            auto pal_idx = (texture->tcw.PalSelect / 16) * 256 | local_idx;
-            textel = PALETTE_RAM[pal_idx];
-        }
-        break;
-    }
+    u32 textel = DecodeTextel(texture->tcw.PixelFmt, texture->tcw.PalSelect, memtel, offset);
 
     u32 expand_format;
 
-    if (expand_format == PixelPal4 || expand_format == PixelPal8) {
+    if (texture->tcw.PixelFmt == PixelPal4 || texture->tcw.PixelFmt == PixelPal8) {
         expand_format = PAL_RAM_CTRL&3;
-    } else if (expand_format == PixelBumpMap || expand_format == PixelYUV) {
+    } else if (texture->tcw.PixelFmt == PixelBumpMap || texture->tcw.PixelFmt == PixelYUV) {
         expand_format = 3;
     } else {
         expand_format = texture->tcw.PixelFmt & 3;
     }
 
-    textel = ExpandToARGB8888(textel, expand_format);
+    textel = ExpandToARGB8888(textel, expand_format, texture->tcw.ScanOrder);
 
     // auto old = TextureFetch2(texture, u, v);
     // if (textel != old.raw) {
