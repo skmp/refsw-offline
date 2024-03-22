@@ -426,6 +426,7 @@ static Color TextureFetch(const text_info *texture, int u, int v) {
     
     u32 mip_bpp;
     if (texture->tcw.VQ_Comp) {
+        base_address += 256 * 4 * 2;
         mip_bpp = 2;
     } else if (texture->tcw.PixelFmt == PixelPal8) {
         mip_bpp = 8;
@@ -452,8 +453,8 @@ static Color TextureFetch(const text_info *texture, int u, int v) {
 
     u16 memtel;
     if (texture->tcw.VQ_Comp) {
-        u8 index = vram[(base_address + offset + 256*4*2) & VRAM_MASK];
         u16 *vq_book = (u16*)&vram[start_address];
+        u8 index = vram[(base_address + offset) & VRAM_MASK];
         memtel = vq_book[index * 4 + (u&1)*2 + (v&1) ];
     } else {
         memtel = (u16&)vram[(base_address + offset *2) & VRAM_MASK];

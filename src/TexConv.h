@@ -363,7 +363,7 @@ void texture_TW(PixelBuffer<pixel_type>* pb,u8* p_in,u32 Width,u32 Height)
 	{
 		for (u32 x=0;x<Width;x+=PixelConvertor::xpp)
 		{
-			u8* p = &p_in[(twsrc/TexCacheEntry.cppop(x,y,bcx,bcy)/divider)<<3];
+			u8* p = &p_in[(twop(x,y,bcx,bcy)/divider)<<3];
 			PixelConvertor::Convert(pb,p);
 
 			pb->rmovex(PixelConvertor::xpp);
