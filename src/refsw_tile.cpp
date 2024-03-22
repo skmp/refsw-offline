@@ -23,14 +23,6 @@ u32             colorBuffer2 [MAX_RENDER_PIXELS];
 ZType           depthBuffer1 [MAX_RENDER_PIXELS];
 ZType           depthBuffer2 [MAX_RENDER_PIXELS];
 
-union mem128i {
-    uint8_t m128i_u8[16];
-    int8_t m128i_i8[16];
-    int16_t m128i_i16[8];
-    int32_t m128i_i32[4];
-    uint32_t m128i_u32[4];
-};
-
 static float mmin(float a, float b, float c, float d)
 {
     float rv = min(a, b);
@@ -429,9 +421,12 @@ static int ClampFlip( bool pp_Clamp, bool pp_Flip
 
     return coord;
 }
-
+static Color TextureFetch(const text_info *texture, int u, int v) {
+    auto offset = u + v * texture->width;
+    return ((Color *)texture->pdata)[offset];
+}
 // Fetch pixels from UVs, interpolate
-static Color TextureFetch(
+static Color TextureFilter(
 	bool pp_IgnoreTexA,  bool pp_ClampU, bool pp_ClampV, bool pp_FlipU, bool pp_FlipV, u32 pp_FilterMode,
 	const text_info *texture, float u, float v) {
         
@@ -440,16 +435,10 @@ static Color TextureFetch(
     int ui = u * 256 + halfpixel;
     int vi = v * 256 + halfpixel;
 
-    auto offset00 = ClampFlip(pp_ClampU, pp_FlipU, (ui >> 8) + 1, texture->width) + ClampFlip(pp_ClampV, pp_FlipV, (vi >> 8) + 1, texture->height) * texture->width;
-    auto offset01 = ClampFlip(pp_ClampU, pp_FlipU, (ui >> 8) + 0, texture->width) + ClampFlip(pp_ClampV, pp_FlipV, (vi >> 8) + 1, texture->height) * texture->width;
-    auto offset10 = ClampFlip(pp_ClampU, pp_FlipU, (ui >> 8) + 1, texture->width) + ClampFlip(pp_ClampV, pp_FlipV, (vi >> 8) + 0, texture->height) * texture->width;
-    auto offset11 = ClampFlip(pp_ClampU, pp_FlipU, (ui >> 8) + 0, texture->width) + ClampFlip(pp_ClampV, pp_FlipV, (vi >> 8) + 0, texture->height) * texture->width;
-
-    mem128i px;
-    px.m128i_u32[0] =  ((u32 *)texture->pdata)[offset00];
-    px.m128i_u32[1] =  ((u32 *)texture->pdata)[offset01];
-    px.m128i_u32[2] =  ((u32 *)texture->pdata)[offset10];
-    px.m128i_u32[3] =  ((u32 *)texture->pdata)[offset11];
+    auto offset00 = TextureFetch(texture, ClampFlip(pp_ClampU, pp_FlipU, (ui >> 8) + 1, texture->width), ClampFlip(pp_ClampV, pp_FlipV, (vi >> 8) + 1, texture->height));
+    auto offset01 = TextureFetch(texture, ClampFlip(pp_ClampU, pp_FlipU, (ui >> 8) + 0, texture->width), ClampFlip(pp_ClampV, pp_FlipV, (vi >> 8) + 1, texture->height));
+    auto offset10 = TextureFetch(texture, ClampFlip(pp_ClampU, pp_FlipU, (ui >> 8) + 1, texture->width), ClampFlip(pp_ClampV, pp_FlipV, (vi >> 8) + 0, texture->height));
+    auto offset11 = TextureFetch(texture, ClampFlip(pp_ClampU, pp_FlipU, (ui >> 8) + 0, texture->width), ClampFlip(pp_ClampV, pp_FlipV, (vi >> 8) + 0, texture->height));
 
     Color textel = {0xAF674839};
 
@@ -457,7 +446,7 @@ static Color TextureFetch(
         // Point sampling
         for (int i = 0; i < 4; i++)
         {
-            textel.bgra[i] = px.m128i_u8[12 + i];
+            textel = offset11;
         }
     } else if (pp_FilterMode == 1) {
         // Bilinear filtering
@@ -469,10 +458,10 @@ static Color TextureFetch(
         for (int i = 0; i < 4; i++)
         {
             textel.bgra[i] =
-                (px.m128i_u8[0 + i] * ublend * vblend) / 65536 +
-                (px.m128i_u8[4 + i] * nublend * vblend) / 65536 +
-                (px.m128i_u8[8 + i] * ublend * nvblend) / 65536 +
-                (px.m128i_u8[12 + i] * nublend * nvblend) / 65536;
+                (offset00.bgra[i] * ublend * vblend) / 65536 +
+                (offset01.bgra[i] * nublend * vblend) / 65536 +
+                (offset10.bgra[i] * ublend * nvblend) / 65536 +
+                (offset11.bgra[i] * nublend * nvblend) / 65536;
         };
     } else {
         // trilinear filtering A and B
@@ -762,7 +751,7 @@ bool PixelFlush_tsp(
         float u = entry->ips.U.Ip(x, y, W);
         float v = entry->ips.V.Ip(x, y, W);
 
-        textel = TextureFetch(pp_IgnoreAlpha, pp_ClampU, pp_ClampV, pp_FlipU, pp_FlipV, pp_FilterMode, &entry->texture, u, v);
+        textel = TextureFilter(pp_IgnoreAlpha, pp_ClampU, pp_ClampV, pp_FlipU, pp_FlipV, pp_FilterMode, &entry->texture, u, v);
         if (pp_Offset) {
             offs = InterpolateOffs(true, entry->ips.Ofs, x, y, W, *stencil);
         }
