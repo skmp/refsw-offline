@@ -13,6 +13,7 @@ list(APPEND shared_src
     src/pvr_regs.cpp
     src/pvr_mem.cpp
     src/TexUtils.cpp
+    src/TexCacheEntry.cpp
 )
 
 set(shared_defines -DTARGET_LINUX_x64 -DREFSW_OFFLINE -DFEAT_TA=0x60000002)

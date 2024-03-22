@@ -48,4 +48,4 @@ static u32 YUV422(s32 Y,s32 Yu,s32 Yv)
 	return packRGB(cclamp<s32>(0, 255, R),cclamp<s32>(0, 255, G),cclamp<s32>(0, 255, B));
 }
 
-#define twop(x,y,bcx,bcy,stride) (detwiddle[0][bcy][x]+detwiddle[1][bcx][y]*stride)
+#define twop(x,y,bcx,bcy) (detwiddle[0][bcy][x]+detwiddle[1][bcx][y])
