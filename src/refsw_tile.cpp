@@ -609,11 +609,11 @@ static Color BlendCoefs(
 // Blending Unit implementation. Alpha blend, accum buffers and such
 static bool BlendingUnit(
 	bool pp_AlphaTest, u32 pp_SrcSel, u32 pp_DstSel, u32 pp_SrcInst, u32 pp_DstInst,
-	Color* cb, Color col)
+	u32 index, Color col)
 {
     Color rv;
-    Color src = pp_SrcSel ? cb[MAX_RENDER_PIXELS] : col;
-    Color dst = cb[pp_DstSel ? MAX_RENDER_PIXELS : 0];
+    Color src = pp_SrcSel ? (Color)colorBuffer2[index] : col;
+    Color dst = pp_DstSel ? (Color)colorBuffer2[index] : (Color)colorBuffer1[index];
         
     Color src_blend = BlendCoefs(pp_SrcInst, false, src, dst);
     Color dst_blend = BlendCoefs(pp_DstInst, true, src, dst);
@@ -625,7 +625,7 @@ static bool BlendingUnit(
 
     if (!pp_AlphaTest || src.a >= PT_ALPHA_REF)
     {
-        cb[pp_DstSel ? MAX_RENDER_PIXELS : 0] = rv;
+        (pp_DstSel ? colorBuffer2[index] : colorBuffer1[index]) = rv.raw;
         return true;
     }
     else
@@ -759,7 +759,7 @@ bool PixelFlush_tsp(
         
     col = FogUnit(pp_Offset, pp_ColorClamp, pp_FogCtrl, col, 1/W, offs.a);
 
-	return BlendingUnit(pp_AlphaTest, pp_SrcSel, pp_DstSel, pp_SrcInst, pp_DstInst, cb, col);
+	return BlendingUnit(pp_AlphaTest, pp_SrcSel, pp_DstSel, pp_SrcInst, pp_DstInst, index, col);
 }
 
 // Depth processing for a pixel -- render_mode 0: OPAQ, 1: PT, 2: TRANS
