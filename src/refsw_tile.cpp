@@ -563,7 +563,7 @@ u32 DecodeTextel(u32 PixelFmt, u32 PalSelect, u64 memtel, u32 offset) {
             }
 
         case PixelPal4: {
-            auto local_idx = (memtel >> (offset & 15)) & 15;
+            auto local_idx = (memtel >> (offset & 15)*4) & 15;
             auto idx = PalSelect * 16 | local_idx;
             return PALETTE_RAM[idx];
         }
