@@ -21,14 +21,10 @@ void InitializePvr() {
     memset(vram, 0, sizeof(vram));
 }
 
-#include "test/framework.inl"
-
-#define NAME 1st_tri
-#include "test/includer.inl"
-
+#include "gen/test_decl.inl"
 
 struct { const char* name; void (*fn)(); } test_list[] = {
-    CASE(1st_tri),
+    #include "gen/test_list.inl"
 };
 
 int main(int argc, char **argv)
