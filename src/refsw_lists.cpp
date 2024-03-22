@@ -311,8 +311,6 @@ bool RenderPVR() {
         rect.top = entry.control.tiley * 32;
         rect.left = entry.control.tilex * 32;
 
-		printf("Render Tile(%i,%i)\n", entry.control.tilex, entry.control.tiley);
-
         rect.bottom = rect.top + 32;
         rect.right = rect.left + 32;
 

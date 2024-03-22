@@ -374,9 +374,7 @@ void RasterizeTriangle(RenderMode render_mode, DrawParameters* params, parameter
             float Xhs41 = C4 + DX41 * y_ps - DY41 * x_ps;
 
             bool inTriangle = Xhs12 >= 0 && Xhs23 >= 0 && Xhs31 >= 0 && Xhs41 >= 0;
-			// Pixel clipper (left:0/right:32)
-			bool inClip     = (x >= area->left) && (x < area->right) && (y >= area->top) && ( y < area->bottom);
-
+			
             if (inTriangle) {
                 u32 index = y * 32 + x;
                 float invW = Z.Ip(x_ps, y_ps);
