@@ -15,7 +15,6 @@
 #include "build.h"
 #include "refsw_tile.h"
 
-u32 render_buffer[MAX_RENDER_PIXELS * 6]; //param pointers + depth1 + depth2 + stencil + acum 1 + acum 2
 parameter_tag_t tagBuffer    [MAX_RENDER_PIXELS];
 StencilType     stencilBuffer[MAX_RENDER_PIXELS];
 u32             colorBuffer1 [MAX_RENDER_PIXELS];
@@ -103,9 +102,6 @@ u32 GetPixelsDrawn()
     // Render to ACCUM from TAG buffer
 // TAG holds references to triangles, ACCUM is the tile framebuffer
 void RenderParamTags(RenderMode rm, int tileX, int tileY) {
-
-    auto rb = render_buffer;
-	auto dz = depthBuffer1;
     float halfpixel = HALF_OFFSET.tsp_pixel_half_offset ? 0.5f : 0;
     taRECT rect;
     rect.left = tileX;
@@ -123,8 +119,6 @@ void RenderParamTags(RenderMode rm, int tileX, int tileY) {
                 auto Entry = GetFpuEntry(&rect, rm, t);
                 PixelFlush_tsp(rm == RM_PUNCHTHROUGH, &Entry, x + halfpixel, y + halfpixel, index, depthBuffer1[index]);
             }
-            rb++;
-			dz++;
         }
     }
 }
@@ -345,22 +339,12 @@ void RasterizeTriangle(RenderMode render_mode, DrawParameters* params, parameter
     float C3 = DY31 * (X3 - area->left) - DX31 * (Y3 - area->top);
     float C4 = v4 ? DY41 * (X4 + area->left) - DX41 * (Y4 + area->top) : 1;
 
-
-    u8*    cb_y = (u8*)render_buffer;
-	ZType* dz_y = depthBuffer1;
-
-//	int stepY = (miny - area->top) * stride_bytes + (minx - area->left) * 4;
-//   cb_y += (miny - area->top) * stride_bytes + (minx - area->left) * 4;
-//	dz_y += stepY>>2; // 4 byte -> 1 float
-
     PlaneStepper3 Z;
     Z.Setup(area, v1, v2, v3, v1.z, v2.z, v3.z);
 
     float halfpixel = HALF_OFFSET.fpu_pixel_half_offset ? 0.5f : 0;
     float y_ps    = halfpixel;
     float minx_ps = halfpixel;
-
-    //auto pixelFlush = pixelPipeline->GetIsp(render_mode, params->isp);
 
     // Loop through ALL pixels in the tile (no smart clipping)
 	for (int y = 0; y < 32; y++)
@@ -384,18 +368,12 @@ void RasterizeTriangle(RenderMode render_mode, DrawParameters* params, parameter
             x_ps = x_ps + 1;
         }
     next_y:
-        cb_y += stride_bytes;
         y_ps = y_ps + 1;
-		dz_y += MAX_RENDER_WIDTH;
     }
 }
     
 u8* GetColorOutputBuffer() {
     return (u8*)colorBuffer1;
-}
-
-u8* DebugGetAllBuffers() {
-    return reinterpret_cast<u8*>(render_buffer);
 }
 
 
