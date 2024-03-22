@@ -25,7 +25,7 @@ pixel_type cclamp(pixel_type minv, pixel_type maxv, pixel_type x) {
 
 #define ARGB4444_32( word ) ( (((word>>12)&0xF)<<28) | (((word>>0)&0xF)<<4) | (((word>>4)&0xF)<<12) | (((word>>8)&0xF)<<20) )
 
-#define ARGB8888_32( word ) ( ((word >> 0) & 0xFF000000) | (((word >> 0) & 0xFF) << 0) | (((word >> 8) & 0xFF) << 8) | (((word >> 16) & 0xFF) << 16) )
+#define ARGB8888_32( word ) ( word )
 
 static u32 packRGB(u8 R,u8 G,u8 B)
 {
