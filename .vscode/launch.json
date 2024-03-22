@@ -5,6 +5,30 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "daytona_behind",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/refsw-offline",
+            "args": ["../scenes/vram_daytona_behind.bin", "../scenes/pvr_regs_daytona_behind.bin"],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/build",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Set Disassembly Flavor to Intel",
+                    "text": "-gdb-set disassembly-flavor intel",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
             "name": "tests",
             "type": "cppdbg",
             "request": "launch",
@@ -27,18 +51,6 @@
                     "ignoreFailures": true
                 }
             ]
-        },
-        {
-            "name": "toy_front",
-            "type": "cppdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/refsw-offline",
-            "args": ["scenes/vram_toy_front.bin"],
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}",
-            "environment": [],
-            "externalConsole": false,
-            "MIMode": "lldb"
-        },
+        }
     ]
 }

@@ -418,7 +418,7 @@ const u32 MipPoint[8] =
 	0x15556//1024
 };
 
-static Color TextureFetch(const text_info *texture, int u, int v) {
+static Color TextureFetchOld(const text_info *texture, int u, int v) {
     auto textel_stride = 8 << texture->tsp.TexU;
 
     u32 start_address = texture->tcw.TexAddr << 3;
@@ -426,7 +426,6 @@ static Color TextureFetch(const text_info *texture, int u, int v) {
     
     u32 mip_bpp;
     if (texture->tcw.VQ_Comp) {
-        base_address += 256 * 4 * 2;
         mip_bpp = 2;
     } else if (texture->tcw.PixelFmt == PixelPal8) {
         mip_bpp = 8;
@@ -453,8 +452,8 @@ static Color TextureFetch(const text_info *texture, int u, int v) {
 
     u16 memtel;
     if (texture->tcw.VQ_Comp) {
+        u8 index = vram[(base_address + offset + 256*4*2) & VRAM_MASK];
         u16 *vq_book = (u16*)&vram[start_address];
-        u8 index = vram[(base_address + offset) & VRAM_MASK];
         memtel = vq_book[index * 4 + (u&1)*2 + (v&1) ];
     } else {
         memtel = (u16&)vram[(base_address + offset *2) & VRAM_MASK];
@@ -472,6 +471,150 @@ static Color TextureFetch(const text_info *texture, int u, int v) {
         case PixelPal4: textel = 0xFF00FFF0; break;
         case PixelPal8: textel = 0xFF0FF0FF; break;
     }
+    return { .raw =  textel };
+}
+
+u32 ExpandToARGB8888(u32 color, u32 mode) {
+	switch(mode)
+	{
+        case 0: return ARGB1555_32(color);
+        case 1: return ARGB565_32(color);
+        case 2: return ARGB4444_32(color);
+        case 3: return ARGB8888_32(color);  // this one just shuffles
+    }
+}
+
+u32 TexAddressGen(const text_info *texture) {
+    u32 base_address = texture->tcw.TexAddr << 3;
+
+    if (texture->tcw.VQ_Comp) {
+        base_address += 256 * 4 * 2;
+    }
+
+    return base_address;
+}
+
+u32 TexOffsetGen(const text_info *texture, int u, int v, u32 stride) {
+    u32 mip_offset;
+    
+    if (texture->tcw.MipMapped) {
+        mip_offset = MipPoint[texture->tsp.TexU] * 4;
+    } else {
+        mip_offset = 0;
+    }
+
+    if (texture->tcw.VQ_Comp || !texture->tcw.ScanOrder) {
+        return mip_offset + twop(u, v, texture->tsp.TexU, texture->tsp.TexV);
+    } else {
+        return mip_offset + u + stride * v;
+    }
+}
+
+u32 BitsPerPixel(const text_info *texture) {
+    if (texture->tcw.VQ_Comp) {
+        return 2; // 8 bpp / 2 / 2 in each direction
+    } else if (texture->tcw.PixelFmt == PixelPal8) {
+        return 8;
+    }
+    else if (texture->tcw.PixelFmt == PixelPal4) {
+        return 4;
+    }
+    else {
+        return 16;
+    }
+}
+
+u64 VQLookup(u32 start_address, u64 memtel, u32 offset) {
+    u8* memtel8 = (u8*)&memtel;
+
+    u64 *vq_book = (u64*)&vram[start_address & (VRAM_MASK-7)];
+    u8 index = memtel8[offset & 7];
+    return vq_book[index];
+}
+
+u32 TexStride(const text_info *texture) {
+    if (texture->tcw.StrideSel && texture->tcw.ScanOrder)
+		return (TEXT_CONTROL&31)*32;
+    else
+        return 8U << texture->tsp.TexU;
+}
+
+
+static Color TextureFetch(const text_info *texture, int u, int v) {
+    
+    u32 stride = TexStride(texture);
+
+    u32 start_address = texture->tcw.TexAddr << 3;
+
+    auto bpp = BitsPerPixel(texture);
+    
+    auto base_address = TexAddressGen(texture);
+    auto offset = TexOffsetGen(texture, u, v, stride);
+
+    u64 memtel = (u64&)vram[(base_address + offset * bpp / 8) & (VRAM_MASK-7)];
+
+    if (texture->tcw.VQ_Comp) {
+        memtel = VQLookup(start_address, memtel, offset / 4);
+    }
+
+    auto memtel_32 = (u32*)&memtel;
+    auto memtel_16 = (u16*)&memtel;
+    auto memtel_8 = (u8*)&memtel;
+
+    u32 textel;
+    switch (texture->tcw.PixelFmt)
+    {
+        case PixelReserved:
+        case Pixel1555:
+        case Pixel565:
+        case Pixel4444:
+        case PixelBumpMap:
+            textel = memtel_16[offset & 3]; break;
+            break;
+        case PixelYUV: {
+            auto memtel_yuv = memtel_32[(offset >> 1) & 1];
+            auto memtel_yuv8 = (u8*)&memtel_yuv;
+            textel = offset & 1
+                ? YUV422(memtel_yuv8[0], memtel_yuv8[1], memtel_yuv8[2])
+                : YUV422(memtel_yuv8[3], memtel_yuv8[1], memtel_yuv8[2]);
+            }
+            break;
+        case PixelPal4: {
+            auto local_idx = (memtel >> (offset & 15)) & 15;
+            auto pal_idx = texture->tcw.PalSelect * 16 | local_idx;
+            textel = PALETTE_RAM[pal_idx];
+        }
+        break;
+        case PixelPal8: {
+            auto local_idx = memtel_8[offset & 7];
+            auto pal_idx = (texture->tcw.PalSelect / 16) * 256 | local_idx;
+            textel = PALETTE_RAM[pal_idx];
+        }
+        break;
+    }
+
+    u32 expand_format;
+
+    if (expand_format == PixelPal4 || expand_format == PixelPal8) {
+        expand_format = PAL_RAM_CTRL&3;
+    } else if (expand_format == PixelBumpMap || expand_format == PixelYUV) {
+        expand_format = 3;
+    } else {
+        expand_format = texture->tcw.PixelFmt & 3;
+    }
+
+    textel = ExpandToARGB8888(textel, expand_format);
+
+    // auto old = TextureFetch2(texture, u, v);
+    // if (textel != old.raw) {
+    //     textel = TextureFetch2(texture, u, v).raw;
+    //     textel = TextureFetch(texture, u, v).raw;
+    //     die("Missmatch");
+    // }
+    // auto old = raw_GetTexture(texture->tsp, texture->tcw)[u + v * stride];
+    // if (textel != old) {
+    //     die("Missmatch");
+    // }
     // This uses the old path for debugging
     // return { .raw = raw_GetTexture(texture->tsp, texture->tcw)[u + v * textel_stride] };
     return { .raw =  textel };
