@@ -12,8 +12,7 @@ list(APPEND shared_src
     src/refsw_tile.cpp
     src/pvr_regs.cpp
     src/pvr_mem.cpp
-    src/TexCache.cpp
-    src/TexCacheEntry.cpp
+    src/TexUtils.cpp
 )
 
 set(shared_defines -DTARGET_LINUX_x64 -DREFSW_OFFLINE -DFEAT_TA=0x60000002)

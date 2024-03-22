@@ -14,6 +14,7 @@
 
 #include "build.h"
 #include "refsw_tile.h"
+#include "TexUtils.h"
 
 parameter_tag_t tagBuffer    [MAX_RENDER_PIXELS];
 StencilType     stencilBuffer[MAX_RENDER_PIXELS];
@@ -250,7 +251,12 @@ FpuEntry GetFpuEntry(taRECT *rect, RenderMode render_mode, ISP_BACKGND_T_type co
     // generate
     if (entry.params.isp.Texture)
     {
-        entry.texture = raw_GetTexture(entry.params.tsp, entry.params.tcw);
+        entry.texture = {
+            .width = 8U << entry.params.tsp.TexU,
+            .height = 8U << entry.params.tsp.TexV,
+            .tsp = entry.params.tsp,
+            .tcw = entry.params.tcw,
+        };
     }
 
     entry.ips.Setup(rect, &entry.params, &entry.texture, vtx[0], vtx[1], vtx[2]);
@@ -397,9 +403,93 @@ static int ClampFlip( bool pp_Clamp, bool pp_Flip
 
     return coord;
 }
+
+
+const u32 MipPoint[8] =
+{
+	0x00006,//8
+	0x00016,//16
+	0x00056,//32
+	0x00156,//64
+	0x00556,//128
+	0x01556,//256
+	0x05556,//512
+	0x15556//1024
+};
+
 static Color TextureFetch(const text_info *texture, int u, int v) {
-    auto offset = u + v * texture->width;
-    return ((Color *)texture->pdata)[offset];
+    auto textel_stride = 8 << texture->tsp.TexU;
+    u32 textel_bpp;
+
+    u32 start_address = texture->tcw.TexAddr << 3;
+    u32 base_address = start_address;
+    
+    u32 mip_bpp;
+    if (texture->tcw.VQ_Comp) {
+        mip_bpp = 2;
+        textel_bpp = 8;
+        // textel_stride /= 2;
+        // u/=2;
+        // v/=2;
+    }
+    else if (texture->tcw.PixelFmt == PixelPal8) {
+        mip_bpp = 8;
+        textel_bpp = 8;
+    }
+    else if (texture->tcw.PixelFmt == PixelPal4) {
+        mip_bpp = 4;
+        textel_bpp = 4;
+    }
+    else {
+        mip_bpp = 16;
+        textel_bpp = 16;
+    }
+
+    if (texture->tcw.MipMapped) {
+        base_address += MipPoint[texture->tsp.TexU] * mip_bpp / 2;
+    }
+
+    u32 offset;
+    if (texture->tcw.VQ_Comp) {
+        offset = twop(u, v, texture->tsp.TexU, texture->tsp.TexV, textel_stride) / 4;
+    } else if (!texture->tcw.ScanOrder) {
+        offset = twop(u, v, texture->tsp.TexU, texture->tsp.TexV, textel_stride);
+    } else {
+        offset = u + textel_stride * v;
+    }
+
+    u16 memtel;
+    if (texture->tcw.VQ_Comp) {
+        u8 index = vram[(base_address + offset + 256*4*2) & VRAM_MASK];
+        u16 *vq_book = (u16*)&vram[start_address];
+        memtel = vq_book[index * 4];
+    } else {
+        memtel = (u16&)vram[(base_address + offset *2) & VRAM_MASK];
+    }
+
+    u32 textel;
+    switch (texture->tcw.PixelFmt)
+    {
+        case PixelReserved:
+        case Pixel1555: textel = ARGB1555_32(memtel); break;
+        case Pixel565: textel = ARGB565_32(memtel); break;
+        case Pixel4444: textel = ARGB4444_32(memtel); break;
+        case PixelYUV: textel = 0xDE000EEF; break;
+        case PixelBumpMap: textel = 0xDEADBEEF; break;
+        case PixelPal4: textel = 0xFF00FFF0; break;
+        case PixelPal8: textel = 0xFF0FF0FF; break;
+    }
+    //Color textel;
+    //;
+    // calculate mip point
+    // get base ptr, vq, pal
+    // calculate offset based on stride
+    // detwidle if needed
+    // get textel (16/8/4 bpp)
+    // direct or lookup VQ or PAL if needed
+    // decode color to 8888
+    
+    return { .raw =  textel };
 }
 // Fetch pixels from UVs, interpolate
 static Color TextureFilter(

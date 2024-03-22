@@ -64,10 +64,8 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 
-//#include <omp.h>
 #include "pvr_mem.h"
-#include "TexCache.h"
-#include "TexConv.h"  // for pixel buffer, used for presenting
+#include "TexUtils.h"
 
 #include <cmath>
 #include <float.h>
@@ -467,12 +465,9 @@ void Present(const char* sname)
 
     addr &= ~3;
 
-    static PixelBuffer<u32> pb;
-    if (pb.total_pixels != width * (SPG_CONTROL.interlace ? (height * 2 + 1) : height)) {
-        pb.init(width, SPG_CONTROL.interlace ? (height * 2 + 1) : height);
-    }
+    void* pb = malloc(width * (SPG_CONTROL.interlace ? (height * 2 + 1) : height) * 4);
 
-    u8 *dst = (u8 *)pb.data();
+    u8 *dst = (u8 *)pb;
 
     if (SPG_CONTROL.interlace & SPG_STATUS.fieldnum) {
         dst += width * 4;
@@ -585,6 +580,7 @@ void Present(const char* sname)
     }
         
 
-    stbi_write_png(sname, width, height, 4, pb.data(), width * 4);
+    stbi_write_png(sname, width, height, 4, pb, width * 4);
+    free(pb);
 }
 

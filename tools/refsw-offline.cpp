@@ -11,6 +11,7 @@
 #include "refsw_tile.h"
 #include "pvr_mem.h"
 #include "pvr_regs.h"
+#include "TexUtils.h"
 
 
 using namespace std;

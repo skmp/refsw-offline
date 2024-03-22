@@ -5,13 +5,9 @@
 
 #include "types.h"
 #include "pvr_regs.h"
-#include "TexCache.h"
-#include "TexConv.h"
+#include "TexUtils.h"
 
-u8* vq_codebook;
-u32 palette_index;
 
-u32 palette16_ram[1024];
 u32 palette32_ram[1024];
 
 u32 detwiddle[2][8][1024];
@@ -64,19 +60,6 @@ void BuildTwiddleTables()
 			detwiddle[0][s][i]=twiddle_slow(i,0,x_sz,y_sz);
 			detwiddle[1][s][i]=twiddle_slow(0,i,y_sz,x_sz);
 		}
-	}
-
-#define REP_16(x) ((x)* 16 + (x))
-#define REP_32(x) ((x)* 8 + (x)/4)
-#define REP_64(x) ((x)* 4 + (x)/16)
-
-	for (int c = 0; c < 65536; c++) {
-		//565
-		decoded_colors[0][c] = 0xFF000000 | (REP_32((c >> 11) % 32) << 16) | (REP_64((c >> 5) % 64) << 8) | (REP_32((c >> 0) % 32) << 0);
-		//1555
-		decoded_colors[1][c] = ((c >> 0) % 2 * 255 << 24) | (REP_32((c >> 11) % 32) << 16) | (REP_32((c >> 6) % 32) << 8) | (REP_32((c >> 1) % 32) << 0);
-		//4444
-		decoded_colors[2][c] = (REP_16((c >> 0) % 16) << 24) | (REP_16((c >> 12) % 16) << 16) | (REP_16((c >> 8) % 16) << 8) | (REP_16((c >> 4) % 16) << 0);
 	}
 }
 

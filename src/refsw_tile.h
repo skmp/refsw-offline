@@ -8,7 +8,12 @@
 #include "pvr_mem.h"
 #include "core_structs.h"
 
-#include "TexCache.h"
+struct text_info {
+	u32 width;
+	u32 height;
+	TSP tsp;
+	TCW tcw;
+};
 
 #include "refsw_lists.h"
 
