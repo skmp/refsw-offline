@@ -30,8 +30,7 @@ enum RenderMode {
     RM_OPAQUE,
     RM_PUNCHTHROUGH,
     RM_TRANSLUCENT,
-    RM_MODIFIER,
-    RM_COUNT
+    RM_MODIFIER
 };
 
 #define TAG_INVALID (1 << 31)

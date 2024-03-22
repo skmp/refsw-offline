@@ -575,6 +575,7 @@ u32 DecodeTextel(u32 PixelFmt, u32 PalSelect, u64 memtel, u32 offset) {
         }
         break;
     }
+    return 0xDEADBEEF;
 }
 
 u32 GetExpandFormat(u32 PixelFmt) {

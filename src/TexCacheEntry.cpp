@@ -297,7 +297,7 @@ void TextureCacheData::CacheFromVram()
 	if (tcw.VQ_Comp)
 	{
 		char temp[512];
-		sprintf(temp, "dumps/vq_%x_%d_%d.table", indirect_color_ptr, w, h);
+		snprintf(temp, sizeof(temp), "dumps/vq_%x_%d_%d.table", indirect_color_ptr, w, h);
 		{
 			auto vq = fopen(temp, "wb");
 			if (vq) {
@@ -308,7 +308,7 @@ void TextureCacheData::CacheFromVram()
 		}
 
 		{
-			sprintf(temp, "dumps/vq_%x_%d_%d.index", indirect_color_ptr, w, h);
+			snprintf(temp, sizeof(temp), "dumps/vq_%x_%d_%d.index", indirect_color_ptr, w, h);
 			auto vi = fopen(temp, "wb");
 			if (vi) {
 				fwrite(vram + sa_tex, 1, size, vi);
