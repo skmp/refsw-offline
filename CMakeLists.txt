@@ -24,6 +24,7 @@ set(shared_includes src . ${CMAKE_CURRENT_BINARY_DIR}/autogen)
 list(APPEND tests 
     1st_tri
     2nd_tri
+    big_tri
 )
 
 list(APPEND offline_src 

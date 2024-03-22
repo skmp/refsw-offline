@@ -174,15 +174,13 @@ u32 decode_pvr_vertices(DrawParameters* params, pvr32addr_t base, u32 skip, u32 
 }
 
 ISP_BACKGND_T_type CoreTagFromDesc(u32 cache_bypass, u32 shadow, u32 skip, u32 tag_address_in_words, u32 tag_offset) {
-    ISP_BACKGND_T_type rv;
-        
-    rv.cache_bypass = cache_bypass;
-    rv.shadow = shadow;
-    rv.skip = skip;
-    rv.tag_address_in_words = tag_address_in_words;
-    rv.tag_offset = tag_offset;
-
-    return rv;
+    return {
+        .tag_offset = tag_offset,
+        .tag_address_in_words = tag_address_in_words,
+        .skip = skip,
+        .shadow = shadow,
+        .cache_bypass = cache_bypass 
+    };
 }
 
 // render a triangle strip object list entry
