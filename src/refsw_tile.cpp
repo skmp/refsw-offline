@@ -482,6 +482,7 @@ u32 ExpandToARGB8888(u32 color, u32 mode, bool ScanOrder /* TODO: Expansion Patt
         case 2: return ARGB4444_32(color);
         case 3: return ARGB8888_32(color);  // this one just shuffles
     }
+    return 0xDEADBEEF;
 }
 
 u32 TexAddressGen(const text_info *texture) {
@@ -576,6 +577,16 @@ u32 DecodeTextel(u32 PixelFmt, u32 PalSelect, u64 memtel, u32 offset) {
     }
 }
 
+u32 GetExpandFormat(u32 PixelFmt) {
+    if (PixelFmt == PixelPal4 || PixelFmt == PixelPal8) {
+        return PAL_RAM_CTRL&3;
+    } else if (PixelFmt == PixelBumpMap || PixelFmt == PixelYUV) {
+        return 3;
+    } else {
+        return PixelFmt & 3;
+    }
+}
+
 static Color TextureFetch(const text_info *texture, int u, int v) {
     
     u32 stride = TexStride(texture);
@@ -595,15 +606,9 @@ static Color TextureFetch(const text_info *texture, int u, int v) {
 
     u32 textel = DecodeTextel(texture->tcw.PixelFmt, texture->tcw.PalSelect, memtel, offset);
 
-    u32 expand_format;
+    u32 expand_format = GetExpandFormat(texture->tcw.PixelFmt);
 
-    if (texture->tcw.PixelFmt == PixelPal4 || texture->tcw.PixelFmt == PixelPal8) {
-        expand_format = PAL_RAM_CTRL&3;
-    } else if (texture->tcw.PixelFmt == PixelBumpMap || texture->tcw.PixelFmt == PixelYUV) {
-        expand_format = 3;
-    } else {
-        expand_format = texture->tcw.PixelFmt & 3;
-    }
+    
 
     textel = ExpandToARGB8888(textel, expand_format, texture->tcw.ScanOrder);
 
