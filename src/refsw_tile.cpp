@@ -815,8 +815,8 @@ static bool BlendingUnit(
 	u32 index, Color col)
 {
     Color rv;
-    Color src = pp_SrcSel ? (Color)colorBuffer2[index] : col;
-    Color dst = pp_DstSel ? (Color)colorBuffer2[index] : (Color)colorBuffer1[index];
+    Color src = {.raw  = pp_SrcSel ? colorBuffer2[index] : col.raw };
+    Color dst = {.raw = pp_DstSel ? colorBuffer2[index] : colorBuffer1[index] };
         
     Color src_blend = BlendCoefs(pp_SrcInst, false, src, dst);
     Color dst_blend = BlendCoefs(pp_DstInst, true, src, dst);

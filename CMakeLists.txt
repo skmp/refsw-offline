@@ -17,7 +17,7 @@ list(APPEND shared_src
 )
 
 set(shared_defines -DTARGET_LINUX_x64 -DREFSW_OFFLINE -DFEAT_TA=0x60000002)
-set(shared_libs -lpng -lz)
+set(shared_libs )
 set(shared_includes src . ${CMAKE_CURRENT_BINARY_DIR}/autogen)
 
 

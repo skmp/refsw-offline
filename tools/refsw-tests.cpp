@@ -34,7 +34,7 @@ int main(int argc, char **argv)
 
     for (auto & test_case: test_list) {
         printf("Test Case: %s\n", test_case.name);
-        sprintf(fb_name, "%s.png", test_case.name);
+        snprintf(fb_name, sizeof(fb_name), "%s.png", test_case.name);
         test_case.fn();
     }
 
