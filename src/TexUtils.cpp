@@ -7,10 +7,13 @@
 #include "pvr_regs.h"
 #include "TexUtils.h"
 
-
-u32 palette32_ram[1024];
+#include <cmath>
 
 u32 detwiddle[2][8][1024];
+u8 BM_SIN90[256];
+u8 BM_COS90[256];
+u8 BM_COS360[256];
+
 //input : address in the yyyyyxxxxx format
 //output : address in the xyxyxyxy format
 //U : x resolution , V : y resolution
@@ -49,7 +52,7 @@ u32 twiddle_slow(u32 x,u32 y,u32 x_sz,u32 y_sz)
 	return rv;
 }
 
-void BuildTwiddleTables()
+void BuildTables()
 {
 	for (u32 s=0;s<8;s++)
 	{
@@ -61,38 +64,11 @@ void BuildTwiddleTables()
 			detwiddle[1][s][i]=twiddle_slow(0,i,y_sz,x_sz);
 		}
 	}
-}
 
-void palette_update()
-{
-	switch(PAL_RAM_CTRL&3)
-	{
-	case 0:
-		for (int i=0;i<1024;i++)
-		{
-			palette32_ram[i] = ARGB1555_32(PALETTE_RAM[i]);
-		}
-		break;
-
-	case 1:
-		for (int i=0;i<1024;i++)
-		{
-			palette32_ram[i] = ARGB565_32(PALETTE_RAM[i]);
-		}
-		break;
-
-	case 2:
-		for (int i=0;i<1024;i++)
-		{
-			palette32_ram[i] = ARGB4444_32(PALETTE_RAM[i]);
-		}
-		break;
-
-	case 3:
-		for (int i=0;i<1024;i++)
-		{
-			palette32_ram[i] = ARGB8888_32(PALETTE_RAM[i]);
-		}
-		break;
+	for (int i = 0; i < 256; i++) {
+		BM_SIN90[i]  = 255 * sinf((i / 256.0f) * (M_PI / 2));
+		BM_COS90[i]  = 255 * cosf((i / 256.0f) * (M_PI / 2));
+		BM_COS360[i] = 255 * cosf((i / 256.0f) * (2 * M_PI));
 	}
+	
 }

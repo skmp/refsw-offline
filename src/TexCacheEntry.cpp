@@ -40,7 +40,41 @@ Compression
 #define GL_UNSIGNED_BYTE 3
 #endif
 
-u32 decoded_colors[3][65536];
+u32 palette32_ram[1024];
+
+void palette_update()
+{
+	switch(PAL_RAM_CTRL&3)
+	{
+	case 0:
+		for (int i=0;i<1024;i++)
+		{
+			palette32_ram[i] = ARGB1555_32(PALETTE_RAM[i]);
+		}
+		break;
+
+	case 1:
+		for (int i=0;i<1024;i++)
+		{
+			palette32_ram[i] = ARGB565_32(PALETTE_RAM[i]);
+		}
+		break;
+
+	case 2:
+		for (int i=0;i<1024;i++)
+		{
+			palette32_ram[i] = ARGB4444_32(PALETTE_RAM[i]);
+		}
+		break;
+
+	case 3:
+		for (int i=0;i<1024;i++)
+		{
+			palette32_ram[i] = ARGB8888_32(PALETTE_RAM[i]);
+		}
+		break;
+	}
+}
 
 
 struct PvrTexInfo;

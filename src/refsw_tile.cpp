@@ -739,6 +739,20 @@ static Color ColorCombiner(
     return rv;
 }
 
+static Color BumpMapper(Color textel, Color offset) {
+    u8 K1 = offset.a;
+    u8 K2 = offset.r;
+    u8 K3 = offset.g;
+    u8 Q = offset.b;
+
+    u8 S = offset.a;
+    u8 R = offset.r;
+    
+    u8 I = u8(K1 + K2*BM_SIN90[S]/256 + K3*BM_COS90[S]*BM_COS360[(R - Q) & 255]/256/256);
+
+    return { .b = 255, .g = 255, .r = 255, .a = I };
+}
+
 // Interpolate the base color, also cheap shadows modifier
 static Color InterpolateBase(
 	bool pp_UseAlpha, bool pp_CheapShadows,
@@ -959,7 +973,12 @@ bool PixelFlush_tsp(
         }
     }
 
-    Color col = ColorCombiner(pp_Texture, pp_Offset, pp_ShadInstr, base, textel, offs);
+    Color col;
+    if (pp_Texture && pp_Offset && entry->texture.tcw.PixelFmt == PixelBumpMap) {
+        col = BumpMapper(textel, offs);
+    } else {
+        col = ColorCombiner(pp_Texture, pp_Offset, pp_ShadInstr, base, textel, offs);
+    }
         
     col = FogUnit(pp_Offset, pp_ColorClamp, pp_FogCtrl, col, 1/W, offs.a);
 

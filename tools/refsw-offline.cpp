@@ -63,7 +63,7 @@ int main(int argc, char **argv)
 
     printf("Rendering ...\n");
 
-    BuildTwiddleTables();
+    BuildTables();
 
     RenderPVR();
 

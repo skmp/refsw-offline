@@ -17,4 +17,4 @@ u32* raw_GetTexture(TSP tsp, TCW tcw);
 
 void palette_update();
 
-void BuildTwiddleTables();
+void BuildTables();

@@ -67,6 +67,9 @@
 #include "pvr_mem.h"
 #include "TexUtils.h"
 
+// Old logic for debugging only
+#include "TexCache.h"
+
 #include <cmath>
 #include <float.h>
 

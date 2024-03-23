@@ -30,7 +30,7 @@ struct { const char* name; void (*fn)(); } test_list[] = {
 
 int main(int argc, char **argv)
 {
-    BuildTwiddleTables();
+    BuildTables();
 
     for (auto & test_case: test_list) {
         printf("Test Case: %s\n", test_case.name);

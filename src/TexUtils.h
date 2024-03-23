@@ -5,11 +5,12 @@
 
 #include "types.h"
 
-extern u32 palette32_ram[1024];
-
 extern u32 detwiddle[2][8][1024];
-void BuildTwiddleTables();
-void palette_update();
+extern u8 BM_SIN90[256];
+extern u8 BM_COS90[256];
+extern u8 BM_COS360[256];
+
+void BuildTables();
 
 
 template<class pixel_type>
