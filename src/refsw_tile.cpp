@@ -277,15 +277,15 @@ void RasterizeTriangle(RenderMode render_mode, DrawParameters* params, parameter
 
 #define FLUSH_NAN(a) isnan(a) ? 0 : a
 
-    const float Y1 = FLUSH_NAN(v1.y);
-    const float Y2 = FLUSH_NAN(v2.y);
-    const float Y3 = FLUSH_NAN(v3.y);
-    const float Y4 = v4 ? FLUSH_NAN(v4->y) : 0;
+    float Y1 = FLUSH_NAN(v1.y);
+    float Y2 = FLUSH_NAN(v2.y);
+    float Y3 = FLUSH_NAN(v3.y);
+    float Y4 = v4 ? FLUSH_NAN(v4->y) : 0;
 
-    const float X1 = FLUSH_NAN(v1.x);
-    const float X2 = FLUSH_NAN(v2.x);
-    const float X3 = FLUSH_NAN(v3.x);
-    const float X4 = v4 ? FLUSH_NAN(v4->x) : 0;
+    float X1 = FLUSH_NAN(v1.x);
+    float X2 = FLUSH_NAN(v2.x);
+    float X3 = FLUSH_NAN(v3.x);
+    float X4 = v4 ? FLUSH_NAN(v4->x) : 0;
 
     int sgn = 1;
 
@@ -314,35 +314,33 @@ void RasterizeTriangle(RenderMode render_mode, DrawParameters* params, parameter
         }
     }
 
-    // Bounding rectangle
-//  int minx = mmin(X1, X2, X3, area->left);
-//  int miny = mmin(Y1, Y2, Y3, area->top);
+	if (sgn < 0) {
+		float tmp;
+		#define SWAP(A,B)	{ tmp=A; A=B; B=tmp; }
+		SWAP(X2,X3);
+		SWAP(Y2,Y3);
+		#undef SWAP
+	}
 
-//  int spanx = mmax(X1+1, X2+1, X3+1, area->right - 1) - minx + 1;
-//  int spany = mmax(Y1+1, Y2+1, Y3+1, area->bottom - 1) - miny + 1;
-
-    //Inside scissor area?
-//  if (spanx < 0 || spany < 0)
-//      return;
 
 	// ============================================================================
 	//   Screen space stuff done at setup time.
 	// ============================================================================
 
     // Half-edge constants
-    const float DX12 = sgn * (X1 - X2);
-    const float DX23 = sgn * (X2 - X3);
-    const float DX31 = v4 ? sgn * (X3 - X4) : sgn * (X3 - X1);
-    const float DX41 = v4 ? sgn * (X4 - X1) : 0;
+    const float DX12 = (X1 - X2);
+    const float DX23 = (X2 - X3);
+    const float DX31 = v4 ? (X3 - X4) : (X3 - X1);
+    const float DX41 = v4 ? (X4 - X1) : 0;
 
-    const float DY12 = sgn * (Y1 - Y2);
-    const float DY23 = sgn * (Y2 - Y3);
-    const float DY31 = v4 ? sgn * (Y3 - Y4) : sgn * (Y3 - Y1);
-    const float DY41 = v4 ? sgn * (Y4 - Y1) : 0;
+    const float DY21 = (Y2 - Y1);
+    const float DY32 = (Y3 - Y2);
+    const float DY13 = v4 ? (Y4 - Y3) : (Y1 - Y3);
+    const float DY41 = v4 ? (Y4 - Y1) : 0;
 
-    float C1 = DY12 * X1 -DX12 * Y1;
-    float C2 = DY23 * X2 -DX23 * Y2;
-    float C3 = DY31 * X3 -DX31 * Y3;
+    float C1 = (-DY21 * X1) - (DX12 * Y1);
+    float C2 = (-DY32 * X2) - (DX23 * Y2);
+    float C3 = (-DY13 * X3) - (DX31 * Y3);
     float C4 = v4 ? (DY41 * X4) - (DX41 * Y4) : 1;
 
     PlaneStepper3Tile Z;
@@ -356,24 +354,9 @@ void RasterizeTriangle(RenderMode render_mode, DrawParameters* params, parameter
 	//   Tile space stuff done when selecting the tile.
 	// ============================================================================
 
-	/*
-		Original Equations diff for tile translation 
-
-		C1 += DY12 * (-area->tileX*32) - DX12 * (-area->tileY*32);
-		C2 += DY23 * (-area->tileX*32) - DX23 * (-area->tileY*32);
-		C3 += DY31 * (-area->tileX*32) - DX31 * (-area->tileY*32);
-		C4 += v4 ? DY41 * (area->tileX*32) - DX41 * (area->tileY*32) : 0;
-
-		=> [Step 1]
-		C1 += DY12 * (-area->tileX*32) + DX12 * ( area->tileY*32);
-		C2 += DY23 * (-area->tileX*32) + DX23 * ( area->tileY*32);
-		C3 += DY31 * (-area->tileX*32) + DX31 * ( area->tileY*32);
-		C4 += v4 ? DY41 * (area->tileX*32) - DX41 * (area->tileY*32) : 0;
-
-	*/
-	C1 += DY12 * (-area->tileX*32) + DX12 * ( area->tileY*32);
-	C2 += DY23 * (-area->tileX*32) + DX23 * ( area->tileY*32);
-	C3 += DY31 * (-area->tileX*32) + DX31 * ( area->tileY*32);
+	C1 += DY21 * (area->tileX*32) + DX12 * ( area->tileY*32);
+	C2 += DY32 * (area->tileX*32) + DX23 * ( area->tileY*32);
+	C3 += DY13 * (area->tileX*32) + DX31 * ( area->tileY*32);
 	C4 += v4 ? DY41 * (area->tileX*32) - DX41 * (area->tileY*32) : 0;
 
 	Z.SetTile(area->tileX,area->tileY);
@@ -388,9 +371,9 @@ void RasterizeTriangle(RenderMode render_mode, DrawParameters* params, parameter
         float x_ps = minx_ps;
         for (int x = 0; x < 32; x++)
         {
-            float Xhs12 = C1 + DX12 * y_ps - DY12 * x_ps;
-            float Xhs23 = C2 + DX23 * y_ps - DY23 * x_ps;
-            float Xhs31 = C3 + DX31 * y_ps - DY31 * x_ps;
+            float Xhs12 = C1 + DX12 * y_ps + DY21 * x_ps;
+            float Xhs23 = C2 + DX23 * y_ps + DY32 * x_ps;
+            float Xhs31 = C3 + DX31 * y_ps + DY13 * x_ps;
             float Xhs41 = C4 + DX41 * y_ps - DY41 * x_ps;
 
             bool inTriangle = Xhs12 >= 0 && Xhs23 >= 0 && Xhs31 >= 0 && Xhs41 >= 0;
