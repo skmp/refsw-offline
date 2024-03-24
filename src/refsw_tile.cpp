@@ -994,9 +994,9 @@ bool PixelFlush_tsp(
             // faux mip map cals
             // these really don't follow hw
             float ddx = (entry->ips.U.ddx + entry->ips.V.ddx);
-            float ddy = (entry->ips.V.ddy + entry->ips.V.ddy);
+            float ddy = (entry->ips.U.ddy + entry->ips.V.ddy);
 
-            float dMip = fmaxf(fabsf(ddx), fabsf(ddy)) * W;
+            float dMip = fminf(fabsf(ddx), fabsf(ddy)) * W * entry->texture.tsp.MipMapD / 4.0f;
 
             MipLevel = 0; // biggest
             while(dMip > 2 && MipLevel < 8) {
