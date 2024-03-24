@@ -495,17 +495,17 @@ u32 TexAddressGen(const text_info *texture) {
     return base_address;
 }
 
-u32 TexOffsetGen(const text_info *texture, int u, int v, u32 stride) {
+u32 TexOffsetGen(const text_info *texture, int u, int v, u32 stride, u32 MipLevel) {
     u32 mip_offset;
     
     if (texture->tcw.MipMapped) {
-        mip_offset = MipPoint[texture->tsp.TexU] * 4;
+        mip_offset = MipPoint[texture->tsp.TexU - MipLevel] * 4;
     } else {
         mip_offset = 0;
     }
 
     if (texture->tcw.VQ_Comp || !texture->tcw.ScanOrder) {
-        return mip_offset + twop(u, v, texture->tsp.TexU, texture->tsp.TexV);
+        return mip_offset + twop(u, v, (texture->tsp.TexU - MipLevel), (texture->tsp.TexV - MipLevel));
     } else {
         return mip_offset + u + stride * v;
     }
@@ -533,11 +533,11 @@ u64 VQLookup(u32 start_address, u64 memtel, u32 offset) {
     return vq_book[index];
 }
 
-u32 TexStride(const text_info *texture) {
+u32 TexStride(const text_info *texture, u32 MipLevel) {
     if (texture->tcw.StrideSel && texture->tcw.ScanOrder)
 		return (TEXT_CONTROL&31)*32;
     else
-        return 8U << texture->tsp.TexU;
+        return (8U << texture->tsp.TexU) >> MipLevel;
 }
 
 u32 DecodeTextel(u32 PixelFmt, u32 PalSelect, u64 memtel, u32 offset) {
@@ -588,16 +588,24 @@ u32 GetExpandFormat(u32 PixelFmt) {
     }
 }
 
-static Color TextureFetch(const text_info *texture, int u, int v) {
+static Color TextureFetch(const text_info *texture, int u, int v, u32 MipLevel) {
     
-    u32 stride = TexStride(texture);
+    if (MipLevel > texture->tsp.TexU)
+        MipLevel = texture->tsp.TexU;
+    if (MipLevel > texture->tsp.TexV)
+        MipLevel = texture->tsp.TexV;
+    
+    u >>= MipLevel;
+    v >>= MipLevel;
+
+    u32 stride = TexStride(texture, MipLevel);
 
     u32 start_address = texture->tcw.TexAddr << 3;
 
     auto bpp = BitsPerPixel(texture);
     
     auto base_address = TexAddressGen(texture);
-    auto offset = TexOffsetGen(texture, u, v, stride);
+    auto offset = TexOffsetGen(texture, u, v, stride, MipLevel);
 
     u64 memtel = (u64&)vram[(base_address + offset * bpp / 8) & (VRAM_MASK-7)];
 
@@ -626,21 +634,27 @@ static Color TextureFetch(const text_info *texture, int u, int v) {
     // This uses the old path for debugging
     // return { .raw = raw_GetTexture(texture->tsp, texture->tcw)[u + v * textel_stride] };
     return { .raw =  textel };
+    // return {
+    //     .b = (8-MipLevel) * 15,
+    //     .g = (8-MipLevel) * 15,
+    //     .r = (8-MipLevel) * 15,
+    //     .a = 255,
+    // };
 }
 // Fetch pixels from UVs, interpolate
 static Color TextureFilter(
 	bool pp_IgnoreTexA,  bool pp_ClampU, bool pp_ClampV, bool pp_FlipU, bool pp_FlipV, u32 pp_FilterMode,
-	const text_info *texture, float u, float v) {
+	const text_info *texture, float u, float v, u32 MipLevel, f32 dTrilinear) {
         
     int halfpixel = HALF_OFFSET.texure_pixel_half_offset ? -127 : 0;
         
     int ui = u * 256 + halfpixel;
     int vi = v * 256 + halfpixel;
 
-    auto offset00 = TextureFetch(texture, ClampFlip(pp_ClampU, pp_FlipU, (ui >> 8) + 1, texture->width), ClampFlip(pp_ClampV, pp_FlipV, (vi >> 8) + 1, texture->height));
-    auto offset01 = TextureFetch(texture, ClampFlip(pp_ClampU, pp_FlipU, (ui >> 8) + 0, texture->width), ClampFlip(pp_ClampV, pp_FlipV, (vi >> 8) + 1, texture->height));
-    auto offset10 = TextureFetch(texture, ClampFlip(pp_ClampU, pp_FlipU, (ui >> 8) + 1, texture->width), ClampFlip(pp_ClampV, pp_FlipV, (vi >> 8) + 0, texture->height));
-    auto offset11 = TextureFetch(texture, ClampFlip(pp_ClampU, pp_FlipU, (ui >> 8) + 0, texture->width), ClampFlip(pp_ClampV, pp_FlipV, (vi >> 8) + 0, texture->height));
+    auto offset00 = TextureFetch(texture, ClampFlip(pp_ClampU, pp_FlipU, (ui >> 8) + 1, texture->width), ClampFlip(pp_ClampV, pp_FlipV, (vi >> 8) + 1, texture->height), MipLevel);
+    auto offset01 = TextureFetch(texture, ClampFlip(pp_ClampU, pp_FlipU, (ui >> 8) + 0, texture->width), ClampFlip(pp_ClampV, pp_FlipV, (vi >> 8) + 1, texture->height), MipLevel);
+    auto offset10 = TextureFetch(texture, ClampFlip(pp_ClampU, pp_FlipU, (ui >> 8) + 1, texture->width), ClampFlip(pp_ClampV, pp_FlipV, (vi >> 8) + 0, texture->height), MipLevel);
+    auto offset11 = TextureFetch(texture, ClampFlip(pp_ClampU, pp_FlipU, (ui >> 8) + 0, texture->width), ClampFlip(pp_ClampV, pp_FlipV, (vi >> 8) + 0, texture->height), MipLevel);
 
     Color textel = {0xAF674839};
 
@@ -967,7 +981,28 @@ bool PixelFlush_tsp(
         float u = entry->ips.U.Ip(x, y, W);
         float v = entry->ips.V.Ip(x, y, W);
 
-        textel = TextureFilter(pp_IgnoreAlpha, pp_ClampU, pp_ClampV, pp_FlipU, pp_FlipV, pp_FilterMode, &entry->texture, u, v);
+        float dTrilinear;
+        u32 MipLevel;
+        if (pp_FilterMode != 0 && entry->texture.tcw.MipMapped) {
+            // faux mip map cals
+            // these really don't follow hw
+            float ddx = (entry->ips.U.ddx + entry->ips.V.ddx);
+            float ddy = (entry->ips.V.ddy + entry->ips.V.ddy);
+
+            float dMip = fmaxf(fabsf(ddx), fabsf(ddy)) * W;
+
+            MipLevel = 0; // biggest
+            while(dMip > 2 && MipLevel < 8) {
+                MipLevel ++;
+                dMip = dMip / 2;
+            }
+            dTrilinear = dMip;
+        } else {
+            dTrilinear = 0;
+            MipLevel = 0;
+        }
+        
+        textel = TextureFilter(pp_IgnoreAlpha, pp_ClampU, pp_ClampV, pp_FlipU, pp_FlipV, pp_FilterMode, &entry->texture, u, v, MipLevel, dTrilinear);
         if (pp_Offset) {
             offs = InterpolateOffs(true, entry->ips.Ofs, x, y, W, *stencil);
         }
