@@ -325,6 +325,10 @@ void RasterizeTriangle(RenderMode render_mode, DrawParameters* params, parameter
 //  if (spanx < 0 || spany < 0)
 //      return;
 
+	// ============================================================================
+	//   Screen space stuff done at setup time.
+	// ============================================================================
+
     // Half-edge constants
     const float DX12 = sgn * (X1 - X2);
     const float DX23 = sgn * (X2 - X3);
@@ -336,10 +340,10 @@ void RasterizeTriangle(RenderMode render_mode, DrawParameters* params, parameter
     const float DY31 = v4 ? sgn * (Y3 - Y4) : sgn * (Y3 - Y1);
     const float DY41 = v4 ? sgn * (Y4 - Y1) : 0;
 
-    float C1 = DY12 * (X1 - area->tileX*32) - DX12 * (Y1 - area->tileY*32);
-    float C2 = DY23 * (X2 - area->tileX*32) - DX23 * (Y2 - area->tileY*32);
-    float C3 = DY31 * (X3 - area->tileX*32) - DX31 * (Y3 - area->tileY*32);
-    float C4 = v4 ? DY41 * (X4 + area->tileX*32) - DX41 * (Y4 + area->tileY*32) : 1;
+    float C1 = DY12 * X1 -DX12 * Y1;
+    float C2 = DY23 * X2 -DX23 * Y2;
+    float C3 = DY31 * X3 -DX31 * Y3;
+    float C4 = v4 ? (DY41 * X4) - (DX41 * Y4) : 1;
 
     PlaneStepper3Tile Z;
     Z.Setup(v1, v2, v3, v1.z, v2.z, v3.z);
@@ -348,9 +352,35 @@ void RasterizeTriangle(RenderMode render_mode, DrawParameters* params, parameter
     float y_ps    = halfpixel;
     float minx_ps = halfpixel;
 
+	// ============================================================================
+	//   Tile space stuff done when selecting the tile.
+	// ============================================================================
 
+	/*
+		Original Equations diff for tile translation 
+
+		C1 += DY12 * (-area->tileX*32) - DX12 * (-area->tileY*32);
+		C2 += DY23 * (-area->tileX*32) - DX23 * (-area->tileY*32);
+		C3 += DY31 * (-area->tileX*32) - DX31 * (-area->tileY*32);
+		C4 += v4 ? DY41 * (area->tileX*32) - DX41 * (area->tileY*32) : 0;
+
+		=> [Step 1]
+		C1 += DY12 * (-area->tileX*32) + DX12 * ( area->tileY*32);
+		C2 += DY23 * (-area->tileX*32) + DX23 * ( area->tileY*32);
+		C3 += DY31 * (-area->tileX*32) + DX31 * ( area->tileY*32);
+		C4 += v4 ? DY41 * (area->tileX*32) - DX41 * (area->tileY*32) : 0;
+
+	*/
+	C1 += DY12 * (-area->tileX*32) + DX12 * ( area->tileY*32);
+	C2 += DY23 * (-area->tileX*32) + DX23 * ( area->tileY*32);
+	C3 += DY31 * (-area->tileX*32) + DX31 * ( area->tileY*32);
+	C4 += v4 ? DY41 * (area->tileX*32) - DX41 * (area->tileY*32) : 0;
 
 	Z.SetTile(area->tileX,area->tileY);
+
+	// ============================================================================
+	//   Inside Tile space.
+	// ============================================================================
 
     // Loop through ALL pixels in the tile (no smart clipping)
 	for (int y = 0; y < 32; y++)
