@@ -418,6 +418,7 @@ const u32 MipPoint[8] =
 	0x15556//1024
 };
 
+#if 0
 static Color TextureFetchOld(const text_info *texture, int u, int v) {
     auto textel_stride = 8 << texture->tsp.TexU;
 
@@ -473,6 +474,7 @@ static Color TextureFetchOld(const text_info *texture, int u, int v) {
     }
     return { .raw =  textel };
 }
+#endif
 
 u32 ExpandToARGB8888(u32 color, u32 mode, bool ScanOrder /* TODO: Expansion Patterns */) {
 	switch(mode)
@@ -764,7 +766,12 @@ static Color BumpMapper(Color textel, Color offset) {
     
     u8 I = u8(K1 + K2*BM_SIN90[S]/256 + K3*BM_COS90[S]*BM_COS360[(R - Q) & 255]/256/256);
 
-    return { .b = 255, .g = 255, .r = 255, .a = I };
+	Color res;
+	res.b = 255;
+	res.g = 255;
+	res.r = 255;
+	res.a = I;
+    return res;
 }
 
 // Interpolate the base color, also cheap shadows modifier

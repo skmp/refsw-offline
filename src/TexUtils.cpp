@@ -9,6 +9,10 @@
 
 #include <cmath>
 
+#ifndef M_PI
+#define M_PI	(3.14159267)
+#endif
+
 u32 detwiddle[2][8][1024];
 u8 BM_SIN90[256];
 u8 BM_COS90[256];
