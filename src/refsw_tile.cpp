@@ -343,6 +343,11 @@ void RasterizeTriangle(RenderMode render_mode, DrawParameters* params, parameter
     float C3 =      (-DY13 * X3) - (DX31 * Y3);
     float C4 = v4 ? (-DY14 * X4) - (DX41 * Y4) : 1;
 
+	// FILL RULE : Buggy, does not work.
+	//	C1 += (((DY21 == 0) && (DX12 < 0)) || (DY21 < 0)) ? 0 : -1;
+	//	C2 += (((DY32 == 0) && (DX23 < 0)) || (DY13 < 0)) ? 0 : -1;
+	//	C3 += (((DY13 == 0) && (DX31 < 0)) || (DY13 < 0)) ? 0 : -1;
+
     PlaneStepper3Tile Z;
     Z.Setup(v1, v2, v3, v1.z, v2.z, v3.z);
 
@@ -353,31 +358,6 @@ void RasterizeTriangle(RenderMode render_mode, DrawParameters* params, parameter
 	// ============================================================================
 	//   Tile space stuff done when selecting the tile.
 	// ============================================================================
-
-	/*
-		s64 orient2dC(const Vec3C& a, const Vec3C& b, const Point2D& c)
-		{
-			return (b.x-a.x)*(c.y-a.y) - (b.y-a.y)*(c.x-a.x);
-		}
-
-		bool isTopLeft(Vec3C& start, Vec3C& end) {
-			int dx = end.x - start.x;
-			int dy = end.y - start.y;
-
-			bool isTop  = (dy == 0) && (dx > 0);
-			bool isLeft =  dy < 0;
-			return isTop || isLeft;
-		}
-	
-		int bias0    = 
-		int bias1    = 
-		int bias2    = 
-
-		s64 w0_start = orient2dC(v2, v3, p) + bias0; // DX23*(Y2) + DY32*(X2); // C2    => isTopLeft(v2, v3) ? 0 : -1;
-		s64 w2_start = orient2dC(v1, v2, p) + bias2; // DX12*(Y1) + DY21*(X1); // C1    => isTopLeft(v1, v2) ? 0 : -1;
-		s64 w1_start = orient2dC(v3, v1, p) + bias1; // DX31*(Y3) + DY31*(X3); // C3    => isTopLeft(v3, v1) ? 0 : -1;
-	*/
-
 	C1 +=         DY21 * (area->tileX*32) + DX12 * ( area->tileY*32);
 	C2 +=         DY32 * (area->tileX*32) + DX23 * ( area->tileY*32);
 	C3 +=         DY13 * (area->tileX*32) + DX31 * ( area->tileY*32);
