@@ -309,11 +309,8 @@ bool RenderPVR() {
         base += ReadRegionArrayEntry(base, &entry);
             
         taRECT rect;
-        rect.top = entry.control.tiley * 32;
-        rect.left = entry.control.tilex * 32;
-
-        rect.bottom = rect.top + 32;
-        rect.right = rect.left + 32;
+		rect.tileX = entry.control.tilex;
+		rect.tileY = entry.control.tiley;
 
         parameter_tag_t bgTag;
 
@@ -348,7 +345,7 @@ bool RenderPVR() {
         }
 
         // Render TAGS to ACCUM
-        RenderParamTags(RM_OPAQUE, rect.left, rect.top);
+        RenderParamTags(RM_OPAQUE, rect);
 
         // layer peeling rendering
         if (!entry.trans.empty)
@@ -374,7 +371,7 @@ bool RenderPVR() {
 
                 // render TAGS to ACCUM
                 // also marks TAGS as invalid, but keeps the index for coplanar sorting
-                RenderParamTags(RM_TRANSLUCENT, rect.left, rect.top);
+                RenderParamTags(RM_TRANSLUCENT, rect);
             } while (GetPixelsDrawn() != 0);
         }
 

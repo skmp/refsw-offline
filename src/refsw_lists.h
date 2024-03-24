@@ -38,5 +38,5 @@ enum RenderMode {
 typedef u32 parameter_tag_t;
 
 struct taRECT {
-    int left, top, right, bottom;
+    int tileX, tileY;
 };

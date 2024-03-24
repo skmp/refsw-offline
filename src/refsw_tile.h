@@ -47,12 +47,47 @@ struct PlaneStepper3
         ddx = -Aa / C;
         ddy = -Ba / C;
 
-        c = v1_a - ddx * (v1.x - rect->left) - ddy * (v1.y - rect->top);
-    }
+        c = v1_a - ddx * (v1.x - rect->tileX*32) - ddy * (v1.y - rect->tileY*32);
+	}
 
     float Ip(float x, float y) const
     {
         return x * ddx + y * ddy + c;
+    }
+
+    float Ip(float x, float y, float W) const
+    {
+        return Ip(x, y) * W;
+    }
+};
+
+
+struct PlaneStepper3Tile
+{
+    float ddx, ddy;
+    float screenCorner;
+	float corner;
+
+    void Setup(const Vertex& v1, const Vertex& v2, const Vertex& v3, float v1_a, float v2_a, float v3_a)
+    {
+        float Aa = ((v3_a - v1_a) * (v2.y - v1.y) - (v2_a - v1_a) * (v3.y - v1.y));
+        float Ba = ((v3.x - v1.x) * (v2_a - v1_a) - (v2.x - v1.x) * (v3_a - v1_a));
+
+        float C = ((v2.x - v1.x) * (v3.y - v1.y) - (v3.x - v1.x) * (v2.y - v1.y));
+        
+        ddx = -Aa / C;
+        ddy = -Ba / C;
+
+        screenCorner = v1_a - ddx * v1.x - ddy * v1.y;
+	}
+
+	void SetTile(int tileX, int tileY) {
+		corner = screenCorner + (ddx * tileX*32) + (ddy * tileY*32);
+	}
+
+    float Ip(float x, float y) const
+    {
+        return x * ddx + y * ddy + corner;
     }
 
     float Ip(float x, float y, float W) const
@@ -93,7 +128,7 @@ struct IPs3
 
             for (int i = 0; i < 4; i++)
                 Ofs[i].Setup(rect, v1, v2, v3, v3.spc[i] * v1.z, v3.spc[i] * v2.z, v3.spc[i] * v3.z);
-        }
+		}
     }
 };
 
@@ -135,7 +170,7 @@ u32 GetPixelsDrawn();
 
 // Render to ACCUM from TAG buffer
 // TAG holds references to triangles, ACCUM is the tile framebuffer
-void RenderParamTags(RenderMode rm, int tileX, int tileY);
+void RenderParamTags(RenderMode rm, taRECT& rect);
 void ClearFpuEntries();
 
 f32 f16(u16 v);

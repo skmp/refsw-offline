@@ -103,13 +103,8 @@ u32 GetPixelsDrawn()
 
     // Render to ACCUM from TAG buffer
 // TAG holds references to triangles, ACCUM is the tile framebuffer
-void RenderParamTags(RenderMode rm, int tileX, int tileY) {
+void RenderParamTags(RenderMode rm, taRECT& rect) {
     float halfpixel = HALF_OFFSET.tsp_pixel_half_offset ? 0.5f : 0;
-    taRECT rect;
-    rect.left = tileX;
-    rect.top = tileY;
-    rect.bottom = rect.top + 32;
-    rect.right = rect.left + 32;
 
     for (int y = 0; y < 32; y++) {
         for (int x = 0; x < 32; x++) {
@@ -341,17 +336,21 @@ void RasterizeTriangle(RenderMode render_mode, DrawParameters* params, parameter
     const float DY31 = v4 ? sgn * (Y3 - Y4) : sgn * (Y3 - Y1);
     const float DY41 = v4 ? sgn * (Y4 - Y1) : 0;
 
-    float C1 = DY12 * (X1 - area->left) - DX12 * (Y1 - area->top);
-    float C2 = DY23 * (X2 - area->left) - DX23 * (Y2 - area->top);
-    float C3 = DY31 * (X3 - area->left) - DX31 * (Y3 - area->top);
-    float C4 = v4 ? DY41 * (X4 + area->left) - DX41 * (Y4 + area->top) : 1;
+    float C1 = DY12 * (X1 - area->tileX*32) - DX12 * (Y1 - area->tileY*32);
+    float C2 = DY23 * (X2 - area->tileX*32) - DX23 * (Y2 - area->tileY*32);
+    float C3 = DY31 * (X3 - area->tileX*32) - DX31 * (Y3 - area->tileY*32);
+    float C4 = v4 ? DY41 * (X4 + area->tileX*32) - DX41 * (Y4 + area->tileY*32) : 1;
 
-    PlaneStepper3 Z;
-    Z.Setup(area, v1, v2, v3, v1.z, v2.z, v3.z);
+    PlaneStepper3Tile Z;
+    Z.Setup(v1, v2, v3, v1.z, v2.z, v3.z);
 
     float halfpixel = HALF_OFFSET.fpu_pixel_half_offset ? 0.5f : 0;
     float y_ps    = halfpixel;
     float minx_ps = halfpixel;
+
+
+
+	Z.SetTile(area->tileX,area->tileY);
 
     // Loop through ALL pixels in the tile (no smart clipping)
 	for (int y = 0; y < 32; y++)
