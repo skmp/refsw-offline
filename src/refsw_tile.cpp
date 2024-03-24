@@ -328,20 +328,20 @@ void RasterizeTriangle(RenderMode render_mode, DrawParameters* params, parameter
 	// ============================================================================
 
     // Half-edge constants
-    const float DX12 = (X1 - X2);
-    const float DX23 = (X2 - X3);
+    const float DX12 =      (X1 - X2);
+    const float DX23 =      (X2 - X3);
     const float DX31 = v4 ? (X3 - X4) : (X3 - X1);
     const float DX41 = v4 ? (X4 - X1) : 0;
 
-    const float DY21 = (Y2 - Y1);
-    const float DY32 = (Y3 - Y2);
+    const float DY21 =      (Y2 - Y1);
+    const float DY32 =      (Y3 - Y2);
     const float DY13 = v4 ? (Y4 - Y3) : (Y1 - Y3);
-    const float DY41 = v4 ? (Y4 - Y1) : 0;
+    const float DY14 = v4 ? (Y1 - Y4) : 0;
 
-    float C1 = (-DY21 * X1) - (DX12 * Y1);
-    float C2 = (-DY32 * X2) - (DX23 * Y2);
-    float C3 = (-DY13 * X3) - (DX31 * Y3);
-    float C4 = v4 ? (DY41 * X4) - (DX41 * Y4) : 1;
+    float C1 =      (-DY21 * X1) - (DX12 * Y1);
+    float C2 =      (-DY32 * X2) - (DX23 * Y2);
+    float C3 =      (-DY13 * X3) - (DX31 * Y3);
+    float C4 = v4 ? (-DY14 * X4) - (DX41 * Y4) : 1;
 
     PlaneStepper3Tile Z;
     Z.Setup(v1, v2, v3, v1.z, v2.z, v3.z);
@@ -354,10 +354,34 @@ void RasterizeTriangle(RenderMode render_mode, DrawParameters* params, parameter
 	//   Tile space stuff done when selecting the tile.
 	// ============================================================================
 
-	C1 += DY21 * (area->tileX*32) + DX12 * ( area->tileY*32);
-	C2 += DY32 * (area->tileX*32) + DX23 * ( area->tileY*32);
-	C3 += DY13 * (area->tileX*32) + DX31 * ( area->tileY*32);
-	C4 += v4 ? DY41 * (area->tileX*32) - DX41 * (area->tileY*32) : 0;
+	/*
+		s64 orient2dC(const Vec3C& a, const Vec3C& b, const Point2D& c)
+		{
+			return (b.x-a.x)*(c.y-a.y) - (b.y-a.y)*(c.x-a.x);
+		}
+
+		bool isTopLeft(Vec3C& start, Vec3C& end) {
+			int dx = end.x - start.x;
+			int dy = end.y - start.y;
+
+			bool isTop  = (dy == 0) && (dx > 0);
+			bool isLeft =  dy < 0;
+			return isTop || isLeft;
+		}
+	
+		int bias0    = 
+		int bias1    = 
+		int bias2    = 
+
+		s64 w0_start = orient2dC(v2, v3, p) + bias0; // DX23*(Y2) + DY32*(X2); // C2    => isTopLeft(v2, v3) ? 0 : -1;
+		s64 w2_start = orient2dC(v1, v2, p) + bias2; // DX12*(Y1) + DY21*(X1); // C1    => isTopLeft(v1, v2) ? 0 : -1;
+		s64 w1_start = orient2dC(v3, v1, p) + bias1; // DX31*(Y3) + DY31*(X3); // C3    => isTopLeft(v3, v1) ? 0 : -1;
+	*/
+
+	C1 +=         DY21 * (area->tileX*32) + DX12 * ( area->tileY*32);
+	C2 +=         DY32 * (area->tileX*32) + DX23 * ( area->tileY*32);
+	C3 +=         DY13 * (area->tileX*32) + DX31 * ( area->tileY*32);
+	C4 += v4 ?  (-DY14)* (area->tileX*32) - DX41 * ( area->tileY*32) : 0;
 
 	Z.SetTile(area->tileX,area->tileY);
 
@@ -374,7 +398,7 @@ void RasterizeTriangle(RenderMode render_mode, DrawParameters* params, parameter
             float Xhs12 = C1 + DX12 * y_ps + DY21 * x_ps;
             float Xhs23 = C2 + DX23 * y_ps + DY32 * x_ps;
             float Xhs31 = C3 + DX31 * y_ps + DY13 * x_ps;
-            float Xhs41 = C4 + DX41 * y_ps - DY41 * x_ps;
+            float Xhs41 = C4 + DX41 * y_ps + DY14 * x_ps;
 
             bool inTriangle = Xhs12 >= 0 && Xhs23 >= 0 && Xhs31 >= 0 && Xhs41 >= 0;
 			
