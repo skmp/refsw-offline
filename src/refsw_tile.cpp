@@ -344,7 +344,7 @@ void RasterizeTriangle(RenderMode render_mode, DrawParameters* params, parameter
     float C1 = DY12 * (X1 - area->left) - DX12 * (Y1 - area->top);
     float C2 = DY23 * (X2 - area->left) - DX23 * (Y2 - area->top);
     float C3 = DY31 * (X3 - area->left) - DX31 * (Y3 - area->top);
-    float C4 = v4 ? DY41 * (X4 + area->left) - DX41 * (Y4 + area->top) : 1;
+    float C4 = v4 ? DY41 * (X4 - area->left) - DX41 * (Y4 - area->top) : 1;
 
     PlaneStepper3 Z;
     Z.Setup(area, v1, v2, v3, v1.z, v2.z, v3.z);
