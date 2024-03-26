@@ -18,6 +18,7 @@
 #include "TexCache.h"
 
 parameter_tag_t tagBuffer    [MAX_RENDER_PIXELS];
+parameter_tag_t tagBuffer2   [MAX_RENDER_PIXELS];
 StencilType     stencilBuffer[MAX_RENDER_PIXELS];
 u32             colorBuffer1 [MAX_RENDER_PIXELS];
 u32             colorBuffer2 [MAX_RENDER_PIXELS];
@@ -68,6 +69,7 @@ void PeelBuffers(float depthValue, u32 stencilValue)
     for (int i = 0; i < MAX_RENDER_PIXELS; i++) {
         zb2[i] = zb[i];     // keep old ZB for reference
         zb[i] = depthValue;    // set the "closest" test to furthest value possible
+        tagBuffer2[i] = tagBuffer[i];
         stencil[i] = stencilValue;
     }
 }
@@ -1031,6 +1033,7 @@ bool PixelFlush_tsp(
 void PixelFlush_isp(RenderMode render_mode, u32 depth_mode, float x, float y, float invW, u32 index, parameter_tag_t tag)
 {
     auto pb = tagBuffer + index;
+    auto pb2 = tagBuffer2 + index;
     auto zb = depthBuffer1 + index;
     auto zb2 = depthBuffer2 + index;
     auto stencil = stencilBuffer + index;
@@ -1102,20 +1105,11 @@ void PixelFlush_isp(RenderMode render_mode, u32 depth_mode, float x, float y, fl
             if (invW < *zb2)
                 return;
 
-            if (invW == *zb || invW == *zb2) {
-                return; // TODO: FIGURE OUT WHY THIS IS BROKEN and/or needed
-                auto tagExisting = *(parameter_tag_t *)pb;
+            if (invW == *zb2) {
+                auto tagRendered = *pb2 & ~TAG_INVALID;
 
-                if (tagExisting & TAG_INVALID)
-                {
-                    if (tag < tagExisting)
-                        return;
-                }
-                else
-                {
-                    if (tag >= tagExisting)
-                        return;
-                }
+                if (tag >= tagRendered)
+                    return;
             }
 
             PixelsDrawn++;

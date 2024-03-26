@@ -4,11 +4,6 @@
 //#include "license/bsd"
 
 
-/*
-    PVR-SB handling
-    DMA hacks are here
-*/
-
 #include "types.h"
 #include "pvr_regs.h"
 
