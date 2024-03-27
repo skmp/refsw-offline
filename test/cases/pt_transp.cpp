@@ -11,6 +11,8 @@ void testCase() {
     FB_W_SOF1 = 4 * 1024 * 1024;
     FB_W_LINESTRIDE =  { .stride = 32 * 2 / 8 };
 
+    PT_ALPHA_REF = 128;
+
     u32 op_list_base = 0x1000;
 
     u32 param_offset = 0x2000;
@@ -55,22 +57,17 @@ void testCase() {
 
     vram32_write(&tiles_ptr, RegionArrayEntry {
         .control = { .last_region = 1 },
-        .opaque = { .ptr_in_words = to_words(op_list_base) },
+        .opaque = { .empty = 1 },
         .opaque_mod = { .empty = 1 },
         .trans = { .empty = 1 },
         .trans_mod = { .empty = 1 },
-        .puncht = { .empty = 1 }
+        .puncht = { .ptr_in_words = to_words(op_list_base) }
     });
 
     vram32_write(&op_list_base, ObjectListTstrip {
         .param_offs_in_words = to_words(param_ptr - PARAM_BASE),
         .skip = 1,
         .mask = 1 << 5
-    });
-
-    vram32_write(&op_list_base, ObjectListLink {
-        .end_of_list = 1,
-        .type = 7
     });
 
     vram32_write(&param_ptr, ISP_TSP {
@@ -80,26 +77,68 @@ void testCase() {
     });
 
     vram32_write(&param_ptr, TSP {
+        .UseAlpha = 1,
         .DstInstr = 0,
         .SrcInstr = 1,
     });
 
     vram32_write(&param_ptr, TCW {});
 
-    vram32_write(&param_ptr, 8.0f);
-    vram32_write(&param_ptr, 8.0f);
+    vram32_write(&param_ptr, 6.0f);
+    vram32_write(&param_ptr, 6.0f);
     vram32_write(&param_ptr, 1.0f);
     vram32_write(&param_ptr, 0xFF0000FF);
 
+    vram32_write(&param_ptr, 28.0f);
+    vram32_write(&param_ptr, 6.0f);
+    vram32_write(&param_ptr, 1.0f);
+    vram32_write(&param_ptr, 0xFF0000FF);
+
+    vram32_write(&param_ptr, 28.0f);
+    vram32_write(&param_ptr, 28.0f);
+    vram32_write(&param_ptr, 1.0f);
+    vram32_write(&param_ptr, 0xFF0000FF);
+
+    vram32_write(&op_list_base, ObjectListTstrip {
+        .param_offs_in_words = to_words(param_ptr - PARAM_BASE),
+        .skip = 1,
+        .mask = 1 << 5
+    });
+
+    vram32_write(&param_ptr, ISP_TSP {
+        .Gouraud = 1,
+        .CullMode = 0,
+        .DepthMode = 7
+    });
+
+    vram32_write(&param_ptr, TSP {
+        .UseAlpha = 1,
+        .DstInstr = 0,
+        .SrcInstr = 1,
+    });
+
+    vram32_write(&param_ptr, TCW {});
+
+
+    vram32_write(&param_ptr, 8.0f);
+    vram32_write(&param_ptr, 8.0f);
+    vram32_write(&param_ptr, 2.0f);
+    vram32_write(&param_ptr, 0x0000FF00);
+
     vram32_write(&param_ptr, 24.0f);
     vram32_write(&param_ptr, 8.0f);
-    vram32_write(&param_ptr, 1.0f);
-    vram32_write(&param_ptr, 0xFFFF0000);
+    vram32_write(&param_ptr, 2.0f);
+    vram32_write(&param_ptr, 0x0000FF00);
 
     vram32_write(&param_ptr, 24.0f);
     vram32_write(&param_ptr, 24.0f);
-    vram32_write(&param_ptr, 1.0f);
-    vram32_write(&param_ptr, 0xFF00FF00);
+    vram32_write(&param_ptr, 2.0f);
+    vram32_write(&param_ptr, 0x0000FF00);
+
+    vram32_write(&op_list_base, ObjectListLink {
+        .end_of_list = 1,
+        .type = 7
+    });
 
     RenderPVR();
     RenderFramebuffer();

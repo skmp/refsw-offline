@@ -25,6 +25,7 @@ list(APPEND tests
     1st_tri
     2nd_tri
     big_tri
+    pt_transp
 )
 
 list(APPEND offline_src 
