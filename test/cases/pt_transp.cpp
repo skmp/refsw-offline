@@ -39,17 +39,17 @@ void testCase() {
     vram32_write(&param_ptr, 0.0f);
     vram32_write(&param_ptr, 0.0f);
     vram32_write(&param_ptr, 1.0f);
-    vram32_write(&param_ptr, 0xFFFFFFFF);
+    vram32_write(&param_ptr, 0xFF808080);
 
     vram32_write(&param_ptr, 640.0f);
     vram32_write(&param_ptr, 0.0f);
     vram32_write(&param_ptr, 1.0f);
-    vram32_write(&param_ptr, 0xFFFFFFFF);
+    vram32_write(&param_ptr, 0xFF808080);
 
     vram32_write(&param_ptr, 640.0f);
     vram32_write(&param_ptr, 480.0f);
     vram32_write(&param_ptr, 1.0f);
-    vram32_write(&param_ptr, 0xFFFFFFFF);
+    vram32_write(&param_ptr, 0xFF808080);
 
 
 
@@ -134,6 +134,42 @@ void testCase() {
     vram32_write(&param_ptr, 24.0f);
     vram32_write(&param_ptr, 2.0f);
     vram32_write(&param_ptr, 0x0000FF00);
+
+    vram32_write(&op_list_base, ObjectListTstrip {
+        .param_offs_in_words = to_words(param_ptr - PARAM_BASE),
+        .skip = 1,
+        .mask = 1 << 5
+    });
+
+    vram32_write(&param_ptr, ISP_TSP {
+        .Gouraud = 1,
+        .CullMode = 0,
+        .DepthMode = 7
+    });
+
+    vram32_write(&param_ptr, TSP {
+        .UseAlpha = 1,
+        .DstInstr = 0,
+        .SrcInstr = 1,
+    });
+
+    vram32_write(&param_ptr, TCW {});
+
+
+    vram32_write(&param_ptr, 16.0f);
+    vram32_write(&param_ptr, 16.0f);
+    vram32_write(&param_ptr, 1.0f);
+    vram32_write(&param_ptr, 0xFFFF0000);
+
+    vram32_write(&param_ptr, 20.0f);
+    vram32_write(&param_ptr, 16.0f);
+    vram32_write(&param_ptr, 1.0f);
+    vram32_write(&param_ptr, 0xFFFF0000);
+
+    vram32_write(&param_ptr, 20.0f);
+    vram32_write(&param_ptr, 20.0f);
+    vram32_write(&param_ptr, 1.0f);
+    vram32_write(&param_ptr, 0xFFFF0000);
 
     vram32_write(&op_list_base, ObjectListLink {
         .end_of_list = 1,

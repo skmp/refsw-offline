@@ -52,11 +52,30 @@ void ClearBuffers(u32 paramValue, float depthValue, u32 stencilValue)
     }
 }
 
+void ClearDepthBuffer2(float depthValue)
+{
+    auto zb = depthBuffer2;
+
+    for (int i = 0; i < MAX_RENDER_PIXELS; i++) {
+        zb[i] = depthValue;
+    }
+}
+
 void ClearParamBuffer(parameter_tag_t paramValue) {
     auto pb = tagBuffer;
 
     for (int i = 0; i < MAX_RENDER_PIXELS; i++) {
         pb[i] = paramValue;
+    }
+}
+
+void PeelBuffersTR() {
+    auto zb = depthBuffer1;
+    auto zb2 = depthBuffer2;
+
+    for (int i = 0; i < MAX_RENDER_PIXELS; i++) {
+        zb2[i] = zb[i];     // keep old ZB for reference
+        tagBuffer2[i] = tagBuffer[i];
     }
 }
 
@@ -121,7 +140,14 @@ void RenderParamTags(RenderMode rm, int tileX, int tileY) {
                 ISP_BACKGND_T_type t;
                 t.full = tag;
                 auto Entry = GetFpuEntry(&rect, rm, t);
-                PixelFlush_tsp(rm == RM_PUNCHTHROUGH, &Entry, x + halfpixel, y + halfpixel, index, depthBuffer1[index]);
+                bool AlphaTestPassed = PixelFlush_tsp(rm == RM_PUNCHTHROUGH, &Entry, x + halfpixel, y + halfpixel, index, depthBuffer1[index]);
+
+                // can only happen when rm == RM_PUNCHTHROUGH
+                if (!AlphaTestPassed) {
+                    // feedback channel that this pixel is not fully drawn yet
+                    PixelsDrawn++;
+                    depthBuffer1[index] = ISP_BACKGND_D.f;
+                }
             }
         }
     }
@@ -1089,13 +1115,18 @@ void PixelFlush_isp(RenderMode render_mode, u32 depth_mode, float x, float y, fl
         // PT
         case RM_PUNCHTHROUGH:
         {
-            // Z + TSP syncronized for alpha test
-            // TODO: Implement layer peeling front-to-back here
-            //if (AlphaTest_tsp(x, y, pb, invW, tag))
-            {
-                *zb = invW;
-                *pb = tag;
+            if (invW > *zb2)
+                return;
+            
+            if (invW == *zb2) {
+                auto tagRendered = *pb2 & ~TAG_INVALID;
+
+                if (tag >= tagRendered)
+                    return;
             }
+            
+            *zb = invW;
+            *pb = tag;
         }
         break;
 

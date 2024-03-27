@@ -126,8 +126,10 @@ extern ZType           depthBuffer1 [MAX_RENDER_PIXELS];
 extern ZType           depthBuffer2 [MAX_RENDER_PIXELS];
 
 void ClearBuffers(u32 paramValue, float depthValue, u32 stencilValue);
+void ClearDepthBuffer2(float depthValue);
 void ClearParamBuffer(parameter_tag_t paramValue);
 void PeelBuffers(float depthValue, u32 stencilValue);
+void PeelBuffersTR();
 void SummarizeStencilOr();
 void SummarizeStencilAnd();
 void ClearPixelsDrawn();

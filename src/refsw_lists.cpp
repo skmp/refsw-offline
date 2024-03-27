@@ -335,20 +335,36 @@ bool RenderPVR() {
             RenderObjectList(RM_OPAQUE, entry.opaque.ptr_in_words * 4, &rect);
         }
 
+        // Render TAGS to ACCUM
+        RenderParamTags(RM_OPAQUE, rect.left, rect.top);
+
         // render PT to TAGS
         if (!entry.puncht.empty)
         {
-            RenderObjectList(RM_PUNCHTHROUGH, entry.puncht.ptr_in_words * 4, &rect);
-        }
+            
+            ClearDepthBuffer2(FLT_MAX);
 
-        //TODO: Render OPAQ modvols
+            do {
+                ClearPixelsDrawn();
+                
+                // Render to TAGS
+                RenderObjectList(RM_PUNCHTHROUGH, entry.puncht.ptr_in_words * 4, &rect);
+
+                // keep reference Z buffer
+                PeelBuffersTR();
+
+                // Render TAGS to ACCUM, making Z holes as-needed
+                RenderParamTags(RM_PUNCHTHROUGH, rect.left, rect.top);
+            } while (GetPixelsDrawn() != 0);
+        }
+        
+
+        //TODO: Actually render OPAQ modvol affected pixels
         if (!entry.opaque_mod.empty)
         {
             RenderObjectList(RM_MODIFIER, entry.opaque_mod.ptr_in_words * 4, &rect);
         }
 
-        // Render TAGS to ACCUM
-        RenderParamTags(RM_OPAQUE, rect.left, rect.top);
 
         // layer peeling rendering
         if (!entry.trans.empty)
